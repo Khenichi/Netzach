@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+/* Definisi Warna Khas NetZach FC */
+@theme {
+  --color-nz-black: #121212;
+  --color-nz-gold: #C5A059;
+  --color-nz-cream: #F5EEDA;
+  --color-nz-white: #FFFFFF;
+}
