@@ -111,23 +111,23 @@ const news = ref([
           <div id="squad" class="lg:col-span-2 flex justify-center items-center gap-4">
             <!-- Left Player (Smaller) -->
             <div class="w-1/4 h-64 bg-black rounded overflow-hidden shadow-lg opacity-80 scale-95 border border-gray-800 hidden sm:block">
-              <img :src="players[0].photo" :alt="players[0].name" class="w-full h-full object-cover filter grayscale hover:grayscale-0 transition" />
+              <img :src="players[0]?.photo" :alt="players[0]?.name" class="w-full h-full object-cover filter grayscale hover:grayscale-0 transition" />
             </div>
 
             <!-- Featured Middle Player (Highlighted Gold Border) -->
             <div class="w-full sm:w-2/4 bg-black border-4 border-[#C5A059] rounded-lg overflow-hidden shadow-2xl relative transform -translate-y-2">
               <div class="h-80 overflow-hidden relative">
-                <img :src="players[1].photo" :alt="players[1].name" class="w-full h-full object-cover" />
+                <img :src="players[1]?.photo" :alt="players[1]?.name" class="w-full h-full object-cover" />
               </div>
               <div class="bg-black text-center py-4 px-2 border-t border-[#C5A059]">
-                <h3 class="text-2xl font-black tracking-wider text-white">{{ players[1].name }}</h3>
-                <p class="text-xs font-semibold text-[#C5A059] uppercase tracking-widest mt-1">{{ players[1].role }}</p>
+                <h3 class="text-2xl font-black tracking-wider text-white">{{ players[1]?.name }}</h3>
+                <p class="text-xs font-semibold text-[#C5A059] uppercase tracking-widest mt-1">{{ players[1]?.role }}</p>
               </div>
             </div>
 
             <!-- Right Player (Smaller) -->
             <div class="w-1/4 h-64 bg-black rounded overflow-hidden shadow-lg opacity-80 scale-95 border border-gray-800 hidden sm:block">
-              <img :src="players[2].photo" :alt="players[2].name" class="w-full h-full object-cover filter grayscale hover:grayscale-0 transition" />
+              <img :src="players[2]?.photo" :alt="players[2]?.name" class="w-full h-full object-cover filter grayscale hover:grayscale-0 transition" />
             </div>
           </div>
 
