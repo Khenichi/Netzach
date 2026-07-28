@@ -23,17 +23,18 @@ import imgSony from '/src/assets/Screenshot 2026-07-28 100346.png'
 import imgKetan from '/src/assets/Screenshot 2026-07-28 100654.png'
 import imgValerio from '/src/assets/Screenshot 2026-07-28 100319.png'
 import imgKevin from '/src/assets/Screenshot 2026-07-28 100412.png'
+import imgNetzach from '/src/assets/Screenshot 2026-07-28 103255.png'
 
 // Data Lengkap Pemain Netzach FC
 const players = ref<Player[]>([
-  { id: 1, name: 'IMANUEL', role: 'Goalkeeper', category: 'Keeper', photo: imgImanuel, number: 1 },
-  { id: 2, name: 'KHENICHI', role: 'Center Back', category: 'Defender', photo: imgKhenichi, number: 4 },
-  { id: 3, name: 'HANSEL', role: 'Full Back', category: 'Defender', photo: imgHansel, number: 3 },
-  { id: 4, name: 'MARLON', role: 'Center Back', category: 'Defender', photo: imgMarlon, number: 5 },
-  { id: 5, name: 'SONY', role: 'Central Midfield', category: 'Midfielder', photo: imgSony, number: 8 },
-  { id: 6, name: 'KETAN', role: 'Attacking Midfield', category: 'Midfielder', photo: imgKetan, number: 10 },
-  { id: 7, name: 'VALERIO', role: 'Defensive Midfield', category: 'Midfielder', photo: imgValerio, number: 6 },
-  { id: 8, name: 'KEVIN', role: 'Main Striker', category: 'Striker', photo: imgKevin, number: 9 }
+  { id: 1, name: 'IMANUEL', role: 'Goalkeeper', category: 'Keeper', photo: imgImanuel, number: 12 },
+  { id: 2, name: 'KHENICHI', role: 'Center Back', category: 'Defender', photo: imgKhenichi, number: 9 },
+  { id: 3, name: 'HANSEL', role: 'Full Back', category: 'Defender', photo: imgHansel, number: 4 },
+  { id: 4, name: 'MARLON', role: 'Center Back', category: 'Defender', photo: imgMarlon, number: 24 },
+  { id: 5, name: 'SONY', role: 'Central Midfield', category: 'Midfielder', photo: imgSony, number: 11 },
+  { id: 6, name: 'KETAN', role: 'Attacking Midfield', category: 'Midfielder', photo: imgKetan, number: 8 },
+  { id: 7, name: 'VALERIO', role: 'Defensive Midfield', category: 'Midfielder', photo: imgValerio, number: 10 },
+  { id: 8, name: 'KEVIN', role: 'Main Striker', category: 'Striker', photo: imgKevin, number: 7 }
 ])
 
 // Filtered Players
@@ -161,7 +162,7 @@ const news = ref([
           <div class="relative w-full max-w-md aspect-[3/4] rounded-2xl p-1 bg-gradient-to-b from-[#C5A059] via-[#C5A059]/20 to-transparent shadow-[0_0_50px_rgba(197,160,89,0.15)]">
             <div class="w-full h-full bg-[#141414] rounded-xl overflow-hidden relative group">
               <img 
-                src="https://images.unsplash.com/photo-1511886929837-354d827aae26?q=80&w=800&auto=format&fit=crop" 
+                :src="imgNetzach"
                 alt="NetZach FC Spirit" 
                 class="w-full h-full object-cover filter contrast-125 brightness-90 group-hover:scale-105 transition duration-700"
               />
