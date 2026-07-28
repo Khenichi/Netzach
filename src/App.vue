@@ -1,5 +1,54 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+
+import bgMusicFile from '/src/assets/music.mp3' 
+
+// Ref & State Audio
+const audioRef = ref<HTMLAudioElement | null>(null)
+const isPlaying = ref<boolean>(false)
+
+// Fungsi Play / Pause Manual
+const toggleAudio = () => {
+  if (!audioRef.value) return
+  
+  if (isPlaying.value) {
+    audioRef.value.pause()
+    isPlaying.value = false
+  } else {
+    playMusic()
+  }
+}
+
+// Helper Function Play Audio
+const playMusic = () => {
+  if (!audioRef.value) return
+  
+  audioRef.value.play().then(() => {
+    isPlaying.value = true
+  }).catch(err => {
+    console.log("Autoplay ditahan oleh browser, menunggu interaksi pengguna:", err)
+    isPlaying.value = false
+  })
+}
+
+// Otomatis Play Musik saat Halaman Dimuat
+onMounted(() => {
+  playMusic()
+
+  // Fallback: Jika Autoplay diblokir browser, panggil musik saat pengguna pertama kali klik/touch layar
+  const handleFirstInteraction = () => {
+    if (!isPlaying.value) {
+      playMusic()
+    }
+    window.removeEventListener('click', handleFirstInteraction)
+    window.removeEventListener('keydown', handleFirstInteraction)
+    window.removeEventListener('touchstart', handleFirstInteraction)
+  }
+
+  window.addEventListener('click', handleFirstInteraction)
+  window.addEventListener('keydown', handleFirstInteraction)
+  window.addEventListener('touchstart', handleFirstInteraction)
+})
 
 // Interface Data Pemain
 interface Player {
@@ -14,7 +63,7 @@ interface Player {
 // State untuk Filter Kategori Pemain
 const activeCategory = ref<string>('All')
 
-// Import Asset Foto (Aman dari query string & issue Vite build)
+// Import Asset Foto
 import imgImanuel from '/src/assets/Screenshot 2026-07-28 100646.png'
 import imgKhenichi from '/src/assets/Screenshot 2026-07-28 100359.png'
 import imgHansel from '/src/assets/Screenshot 2026-07-28 100633.png'
@@ -75,7 +124,6 @@ const news = ref([
     
     <!-- 1. TOP HEADER & NAVBAR -->
     <header class="border-b border-[#C5A059]/20 bg-[#0d0d0d]/90 backdrop-blur-md sticky top-0 z-50">
-      <!-- Top Bar -->
       <div class="max-w-7xl mx-auto px-6 py-1.5 flex justify-between items-center text-[11px] border-b border-white/5 text-[#C5A059]/80 font-medium tracking-wider">
         <div class="flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -88,9 +136,7 @@ const news = ref([
         </div>
       </div>
 
-      <!-- Main Nav -->
       <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <!-- Logo Text Left -->
         <a href="#" class="flex items-center gap-3 group">
           <div class="w-10 h-12 border-2 border-[#C5A059] flex items-center justify-center bg-black shadow-[0_0_15px_rgba(197,160,89,0.3)] relative group-hover:scale-105 transition duration-300">
             <span class="text-[#C5A059] font-black text-lg tracking-tighter">NZ</span>
@@ -102,7 +148,6 @@ const news = ref([
           </div>
         </a>
 
-        <!-- Links -->
         <nav class="hidden lg:flex items-center gap-8 text-xs font-bold tracking-[0.15em]">
           <a href="#" class="text-[#C5A059] border-b-2 border-[#C5A059] pb-1">HOME</a>
           <a href="#squad" class="text-gray-300 hover:text-[#C5A059] transition pb-1">SQUAD</a>
@@ -119,12 +164,10 @@ const news = ref([
 
     <!-- 2. HERO SECTION -->
     <section class="relative min-h-[85vh] flex items-center justify-center bg-[#0d0d0d] overflow-hidden py-16 px-6">
-      <!-- Ambient Glow & Pattern -->
       <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#C5A059]/10 rounded-full blur-[140px] pointer-events-none"></div>
       <div class="absolute inset-0 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:32px_32px] opacity-5 pointer-events-none"></div>
 
       <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
-        <!-- Text Left -->
         <div class="lg:col-span-7 space-y-6 text-center lg:text-left">
           <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#C5A059]/40 bg-[#C5A059]/10 text-[#C5A059] text-xs font-bold tracking-widest uppercase">
             <span>⚔️</span> RISE TO GLORY
@@ -157,7 +200,6 @@ const news = ref([
           </div>
         </div>
 
-        <!-- Featured Player Showcase Right -->
         <div class="lg:col-span-5 relative flex justify-center">
           <div class="relative w-full max-w-md aspect-[3/4] rounded-2xl p-1 bg-gradient-to-b from-[#C5A059] via-[#C5A059]/20 to-transparent shadow-[0_0_50px_rgba(197,160,89,0.15)]">
             <div class="w-full h-full bg-[#141414] rounded-xl overflow-hidden relative group">
@@ -181,15 +223,12 @@ const news = ref([
     <!-- 3. MAIN SQUAD SECTION -->
     <section id="squad" class="py-24 px-6 bg-[#111111] relative border-t border-white/5">
       <div class="max-w-7xl mx-auto space-y-12">
-        
-        <!-- Section Header -->
         <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/10 pb-6">
           <div>
             <div class="text-xs font-black tracking-[0.3em] text-[#C5A059] uppercase mb-2">THE WARRIORS</div>
             <h2 class="text-3xl sm:text-4xl font-black tracking-tight text-white uppercase">OFFICIAL SQUAD</h2>
           </div>
 
-          <!-- Category Filter Tabs -->
           <div class="flex flex-wrap gap-2">
             <button 
               v-for="cat in ['All', 'Keeper', 'Defender', 'Midfielder', 'Striker']" 
@@ -207,26 +246,21 @@ const news = ref([
           </div>
         </div>
 
-        <!-- Players Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           <div 
             v-for="player in filteredPlayers" 
             :key="player.id"
             class="group relative bg-[#181818] border border-white/10 rounded-xl overflow-hidden hover:border-[#C5A059] transition duration-500 shadow-xl flex flex-col"
           >
-            <!-- Card Image -->
             <div class="h-72 overflow-hidden relative bg-black/40">
-              <!-- Player Jersey Number Tag -->
               <span class="absolute top-3 right-3 text-3xl font-black text-white/20 group-hover:text-[#C5A059] transition duration-300 z-10">
                 #{{ player.number }}
               </span>
 
-              <!-- Category Badge -->
               <span class="absolute top-3 left-3 bg-black/70 backdrop-blur-md text-[#C5A059] border border-[#C5A059]/40 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-widest z-10">
                 {{ player.category }}
               </span>
 
-              <!-- Photo -->
               <img 
                 :src="player.photo" 
                 :alt="player.name" 
@@ -235,7 +269,6 @@ const news = ref([
               <div class="absolute inset-0 bg-gradient-to-t from-[#181818] via-transparent to-transparent"></div>
             </div>
 
-            <!-- Card Body -->
             <div class="p-5 bg-[#181818] border-t border-white/5 flex-grow flex flex-col justify-between">
               <div>
                 <h3 class="text-xl font-black tracking-wider text-white group-hover:text-[#C5A059] transition duration-300">
@@ -253,15 +286,12 @@ const news = ref([
             </div>
           </div>
         </div>
-
       </div>
     </section>
 
     <!-- 4. FIXTURES & IDENTITY SECTION -->
     <section id="fixtures" class="py-24 px-6 bg-[#0d0d0d] border-t border-white/5">
       <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12">
-        
-        <!-- Fixtures Left (7 Cols) -->
         <div class="lg:col-span-7 space-y-6">
           <div>
             <div class="text-xs font-black tracking-[0.3em] text-[#C5A059] uppercase mb-2">MATCH CENTER</div>
@@ -290,7 +320,6 @@ const news = ref([
           </div>
         </div>
 
-        <!-- Identity / Colors Right (5 Cols) -->
         <div id="colors" class="lg:col-span-5 space-y-6 bg-[#141414] p-8 rounded-2xl border border-white/5">
           <div>
             <div class="text-xs font-black tracking-[0.3em] text-[#C5A059] uppercase mb-2">OUR IDENTITY</div>
@@ -301,7 +330,6 @@ const news = ref([
             Hitam mewakili kekuatan dan dominasi tanpa kompromi, Emas menyimbolkan kejayaan dan supremasi tertinggi, sedangkan Putih melambangkan integritas murni.
           </p>
 
-          <!-- Swatches -->
           <div class="grid grid-cols-3 gap-4 pt-2">
             <div class="p-4 rounded-xl bg-[#121212] border border-white/20 text-center space-y-2">
               <div class="w-full h-10 rounded bg-[#121212] border border-white/10"></div>
@@ -322,7 +350,6 @@ const news = ref([
             </div>
           </div>
         </div>
-
       </div>
     </section>
 
@@ -385,11 +412,33 @@ const news = ref([
       </div>
     </footer>
 
+    <!-- Audio Element dengan atribut autoplay & src dinamis -->
+    <audio ref="audioRef" :src="bgMusicFile" loop preload="auto" autoplay></audio>
+
+    <!-- Floating Audio Control Button -->
+    <button 
+      @click="toggleAudio"
+      class="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-black/80 hover:bg-black border border-[#C5A059] text-[#C5A059] px-4 py-2.5 rounded-full shadow-[0_0_20px_rgba(197,160,89,0.3)] backdrop-blur-md transition-all duration-300 group"
+    >
+      <div v-if="isPlaying" class="flex items-end gap-0.5 h-4 w-4">
+        <span class="w-1 bg-[#C5A059] h-full animate-bounce"></span>
+        <span class="w-1 bg-[#C5A059] h-2/3 animate-bounce [animation-delay:0.2s]"></span>
+        <span class="w-1 bg-[#C5A059] h-4/5 animate-bounce [animation-delay:0.4s]"></span>
+      </div>
+
+      <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 fill-current text-gray-400 group-hover:text-[#C5A059]" viewBox="0 0 24 24">
+        <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+      </svg>
+
+      <span class="text-[10px] font-black tracking-widest uppercase">
+        {{ isPlaying ? 'SOUND ON' : 'SOUND OFF' }}
+      </span>
+    </button>
+
   </div>
 </template>
 
 <style>
-/* Smooth Scroll */
 html {
   scroll-behavior: smooth;
 }
