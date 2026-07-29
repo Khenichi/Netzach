@@ -55,8 +55,7 @@ interface PlayerStats {
   matches: number
   goals: number
   assists: number
-  yellowCards: number
-  redCards: number
+  rating: number // Diperbarui: Rating manual dari Admin
 }
 
 interface Player {
@@ -106,7 +105,10 @@ const localPhotos: Record<string, string> = {
 // 4. STATES & REFS
 // -------------------------------------------------------------
 const activeCategory = ref<string>('All')
-const selectedPlayer = ref<Player | null>(null) // State Modal Stats Pemain
+const selectedPlayer = ref<Player | null>(null)
+
+// Loading State Universal
+const isLoading = ref<boolean>(false)
 
 // Auth States
 const isAdmin = ref<boolean>(false)
@@ -151,7 +153,6 @@ const news = ref([
 // 5. LIFECYCLE & FIREBASE LISTENERS
 // -------------------------------------------------------------
 onMounted(() => {
-  // Audio Playback Listener
   playMusic()
   const handleFirstInteraction = () => {
     if (!isPlaying.value) playMusic()
@@ -163,12 +164,10 @@ onMounted(() => {
   window.addEventListener('keydown', handleFirstInteraction)
   window.addEventListener('touchstart', handleFirstInteraction)
 
-  // Auth Status Observer
   onAuthStateChanged(auth, (user: User | null) => {
     isAdmin.value = !!user
   })
 
-  // Realtime Sync Pemain dari Firestore
   onSnapshot(collection(db, 'players'), (snapshot) => {
     const fetchedPlayers: Player[] = []
     snapshot.forEach((docSnap) => {
@@ -177,7 +176,6 @@ onMounted(() => {
     players.value = fetchedPlayers
   })
 
-  // Realtime Sync Jadwal dari Firestore
   onSnapshot(collection(db, 'fixtures'), (snapshot) => {
     const fetchedFixtures: Fixture[] = []
     snapshot.forEach((docSnap) => {
@@ -196,6 +194,7 @@ const filteredPlayers = computed(() => {
 // 6. ADMIN & FIREBASE ACTIONS
 // -------------------------------------------------------------
 const handleLogin = async () => {
+  isLoading.value = true
   try {
     loginError.value = ''
     await signInWithEmailAndPassword(auth, email.value, password.value)
@@ -204,6 +203,8 @@ const handleLogin = async () => {
     password.value = ''
   } catch (err) {
     loginError.value = 'Email atau Password Admin Salah!'
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -216,15 +217,16 @@ const handleLogout = async () => {
 const seedPlayersToFirebase = async () => {
   if (!confirm('Unggah 8 data pemain default ke database Firebase?')) return
 
+  isLoading.value = true
   const initialPlayers: Omit<Player, 'id'>[] = [
-    { name: 'IMANUEL', role: 'Goalkeeper', category: 'Keeper', photo: '', number: 12, stats: { matches: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0 } },
-    { name: 'KHENICHI', role: 'Center Back', category: 'Defender', photo: '', number: 9, stats: { matches: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0 } },
-    { name: 'HANSEL', role: 'Full Back', category: 'Defender', photo: '', number: 4, stats: { matches: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0 } },
-    { name: 'MARLON', role: 'Center Back', category: 'Defender', photo: '', number: 24, stats: { matches: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0 } },
-    { name: 'SONY', role: 'Central Midfield', category: 'Midfielder', photo: '', number: 11, stats: { matches: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0 } },
-    { name: 'KETAN', role: 'Attacking Midfield', category: 'Midfielder', photo: '', number: 8, stats: { matches: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0 } },
-    { name: 'VALERIO', role: 'Defensive Midfield', category: 'Midfielder', photo: '', number: 10, stats: { matches: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0 } },
-    { name: 'KEVIN', role: 'Main Striker', category: 'Striker', photo: '', number: 7, stats: { matches: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0 } }
+    { name: 'IMANUEL', role: 'Goalkeeper', category: 'Keeper', photo: '', number: 12, stats: { matches: 0, goals: 0, assists: 0, rating: 7.5 } },
+    { name: 'KHENICHI', role: 'Center Back', category: 'Defender', photo: '', number: 9, stats: { matches: 0, goals: 0, assists: 0, rating: 8.0 } },
+    { name: 'HANSEL', role: 'Full Back', category: 'Defender', photo: '', number: 4, stats: { matches: 0, goals: 0, assists: 0, rating: 7.8 } },
+    { name: 'MARLON', role: 'Center Back', category: 'Defender', photo: '', number: 24, stats: { matches: 0, goals: 0, assists: 0, rating: 7.9 } },
+    { name: 'SONY', role: 'Central Midfield', category: 'Midfielder', photo: '', number: 11, stats: { matches: 0, goals: 0, assists: 0, rating: 8.2 } },
+    { name: 'KETAN', role: 'Attacking Midfield', category: 'Midfielder', photo: '', number: 8, stats: { matches: 0, goals: 0, assists: 0, rating: 8.5 } },
+    { name: 'VALERIO', role: 'Defensive Midfield', category: 'Midfielder', photo: '', number: 10, stats: { matches: 0, goals: 0, assists: 0, rating: 8.1 } },
+    { name: 'KEVIN', role: 'Main Striker', category: 'Striker', photo: '', number: 7, stats: { matches: 0, goals: 0, assists: 0, rating: 8.8 } }
   ]
 
   try {
@@ -234,11 +236,20 @@ const seedPlayersToFirebase = async () => {
     alert('Berhasil! 8 Pemain telah dibuat di Firebase.')
   } catch (err) {
     alert('Gagal! Pastikan Rules Firestore sudah diset menjadi "allow read, write: if true;".')
+  } finally {
+    isLoading.value = false
   }
 }
 
 const savePlayerStats = async () => {
   if (!selectedPlayer.value || !selectedPlayer.value.id) return
+  
+  // Memastikan stats object terdefinisi
+  if (!selectedPlayer.value.stats) {
+    selectedPlayer.value.stats = { matches: 0, goals: 0, assists: 0, rating: 7.0 }
+  }
+
+  isLoading.value = true
   try {
     const playerRef = doc(db, 'players', selectedPlayer.value.id)
     await updateDoc(playerRef, {
@@ -247,9 +258,12 @@ const savePlayerStats = async () => {
       role: selectedPlayer.value.role,
       category: selectedPlayer.value.category
     })
-    alert('Statistik berhasil diperbarui!')
+    alert('Statistik pemain berhasil disimpan!')
   } catch (e) {
     console.error('Error update stats:', e)
+    alert('Gagal menyimpan statistik.')
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -258,15 +272,73 @@ const addFixture = async () => {
     alert('Isi lawan dan tanggal pertandingan terlebih dahulu!')
     return
   }
-  await addDoc(collection(db, 'fixtures'), newFixture.value)
-  newFixture.value = { home: 'NetZach FC', away: '', date: '', time: '19:00 WIB', status: 'UPCOMING' }
-  alert('Jadwal pertandingan berhasil ditambahkan!')
+  isLoading.value = true
+  try {
+    await addDoc(collection(db, 'fixtures'), newFixture.value)
+    newFixture.value = { home: 'NetZach FC', away: '', date: '', time: '19:00 WIB', status: 'UPCOMING' }
+    alert('Jadwal pertandingan berhasil ditambahkan!')
+  } catch (err) {
+    alert('Gagal menambahkan jadwal.')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// State untuk menyimpan data fixture yang sedang di-edit di Modal
+const editingFixture = ref<Fixture | null>(null)
+
+// 1. UPDATE STATUS LANGSUNG DARI SELECT (QUICK EDIT)
+const updateFixtureStatus = async (fixture: Fixture, newStatus: 'NEXT MATCH' | 'UPCOMING' | 'FINISHED') => {
+  if (!fixture.id) return
+  isLoading.value = true
+  try {
+    const fixtureRef = doc(db, 'fixtures', fixture.id)
+    await updateDoc(fixtureRef, { status: newStatus })
+  } catch (err) {
+    console.error('Error update status:', err)
+    alert('Gagal mengupdate status pertandingan.')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// 2. BUKA MODAL EDIT DETAILED FIXTURE
+const editFixture = (fixture: Fixture) => {
+  editingFixture.value = JSON.parse(JSON.stringify(fixture))
+}
+
+// 3. SIMPAN EDITAN FULL MODAL KE FIREBASE
+const saveEditedFixture = async () => {
+  if (!editingFixture.value || !editingFixture.value.id) return
+  isLoading.value = true
+  try {
+    const fixtureRef = doc(db, 'fixtures', editingFixture.value.id)
+    await updateDoc(fixtureRef, {
+      home: editingFixture.value.home,
+      away: editingFixture.value.away,
+      date: editingFixture.value.date,
+      time: editingFixture.value.time,
+      status: editingFixture.value.status
+    })
+    editingFixture.value = null
+    alert('Jadwal pertandingan berhasil diperbarui!')
+  } catch (err) {
+    console.error('Error update fixture:', err)
+    alert('Gagal memperbarui jadwal pertandingan.')
+  } finally {
+    isLoading.value = false
+  }
 }
 
 const deleteFixture = async (id?: string) => {
   if (!id) return
   if (confirm('Hapus jadwal ini?')) {
-    await deleteDoc(doc(db, 'fixtures', id))
+    isLoading.value = true
+    try {
+      await deleteDoc(doc(db, 'fixtures', id))
+    } finally {
+      isLoading.value = false
+    }
   }
 }
 </script>
@@ -277,22 +349,17 @@ const deleteFixture = async (id?: string) => {
 
     <!-- 1. HEADER -->
     <header class="border-b border-[#C5A059]/20 bg-[#0d0d0d]/90 backdrop-blur-md sticky top-0 z-40">
-      <div class="max-w-7xl mx-auto px-6 py-1.5 flex justify-between items-center text-[11px] border-b border-white/5 text-[#C5A059]/80 font-medium tracking-wider">
+      <div class="max-w-7xl mx-auto px-6 py-2 flex justify-between items-center text-[11px] border-b border-white/5 text-[#C5A059]/80 font-medium tracking-wider">
         <div class="flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span>OFFICIAL CLUB WEBSITE</span>
         </div>
+        
         <div class="flex items-center gap-4">
           <button @click="toggleAudio" class="hover:text-white transition flex items-center gap-1">
-            <span>{{ isPlaying ? '🔊' : '🔇' }}</span>
             <span>MUSIC {{ isPlaying ? 'ON' : 'OFF' }}</span>
+            <span>{{ isPlaying ? '🔊' : '🔇' }}</span>
           </button>
-          <span class="text-gray-600">|</span>
-          <button v-if="isAdmin" @click="showAdminDashboard = true" class="text-[10px] bg-[#C5A059] text-black font-black px-2 py-0.5 rounded uppercase">
-            ⚙️ Admin Panel
-          </button>
-          <span v-if="isAdmin" class="text-gray-600">|</span>
-          <a href="#" class="hover:text-white transition">INSTAGRAM</a>
         </div>
       </div>
 
@@ -397,27 +464,37 @@ const deleteFixture = async (id?: string) => {
 
         <div v-if="players.length === 0" class="text-center py-12 bg-[#181818] rounded-2xl border border-white/5">
           <p class="text-gray-400 text-sm">Database pemain di Firebase masih kosong.</p>
-          <button v-if="isAdmin" @click="seedPlayersToFirebase" class="mt-4 bg-[#C5A059] text-black font-bold px-4 py-2 rounded text-xs">
-            🚀 Seed 8 Pemain Awal Sekarang
+          <button v-if="isAdmin" @click="seedPlayersToFirebase" :disabled="isLoading" class="mt-4 bg-[#C5A059] text-black font-bold px-4 py-2 rounded text-xs hover:brightness-110 flex items-center gap-2 mx-auto">
+            <span v-if="isLoading" class="w-3 h-3 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+            <span>🚀 Seed 8 Pemain Awal Sekarang</span>
           </button>
-          <p v-else class="text-xs text-gray-600 mt-2">Silahkan login sebagai admin di footer untuk mengunggah data pemain.</p>
+          <p v-else class="text-xs text-gray-600 mt-2">Silahkan login sebagai admin di header/footer untuk mengunggah data pemain.</p>
         </div>
 
+        <!-- PLAYER CARDS GRID -->
         <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           <div 
             v-for="player in filteredPlayers" 
             :key="player.id || player.name"
-            @click="selectedPlayer = { ...player }"
+            @click="selectedPlayer = JSON.parse(JSON.stringify(player))"
             class="group relative bg-[#181818] border border-white/10 rounded-xl overflow-hidden hover:border-[#C5A059] transition duration-500 shadow-xl flex flex-col cursor-pointer"
           >
             <div class="h-72 overflow-hidden relative bg-black/40">
-              <span class="absolute top-3 right-3 text-3xl font-black text-white/20 group-hover:text-[#C5A059] transition duration-300 z-10">
+              <!-- NOMOR PUNGGUNG -->
+              <span class="absolute top-3 right-3 text-3xl font-black text-white/20 group-hover:text-[#C5A059]/40 transition duration-300 z-10">
                 #{{ player.number }}
               </span>
 
+              <!-- KATEGORI POSISI -->
               <span class="absolute top-3 left-3 bg-black/70 backdrop-blur-md text-[#C5A059] border border-[#C5A059]/40 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-widest z-10">
                 {{ player.category }}
               </span>
+
+              <!-- BADGE RATING PEMAIN DI KARTU -->
+              <div class="absolute bottom-3 left-3 z-10 bg-gradient-to-r from-[#C5A059] to-[#9e7d3b] text-black px-2.5 py-1 rounded-md flex items-center gap-1 shadow-lg border border-[#f3e0aa]/40">
+                <span class="text-[9px] font-black tracking-tighter uppercase">RATING</span>
+                <span class="text-xs font-black font-mono leading-none">{{ player.stats?.rating ?? '7.0' }}</span>
+              </div>
 
               <img 
                 :src="player.photo || localPhotos[player.name]" 
@@ -437,9 +514,14 @@ const deleteFixture = async (id?: string) => {
                 </p>
               </div>
 
-              <div class="mt-4 pt-3 border-t border-white/5 flex justify-between items-center text-[10px] text-[#C5A059] font-mono font-bold">
-                <span>VIEW STATS</span>
-                <span>→</span>
+              <!-- STATS MINI DI FOOTER KARTU -->
+              <div class="mt-4 pt-3 border-t border-white/5 flex justify-between items-center text-[10px] text-gray-400 font-mono">
+                <div class="flex items-center gap-3">
+                  <span><b class="text-white">{{ player.stats?.matches || 0 }}</b> M</span>
+                  <span><b class="text-[#C5A059]">{{ player.stats?.goals || 0 }}</b> G</span>
+                  <span><b class="text-white">{{ player.stats?.assists || 0 }}</b> A</span>
+                </div>
+                <span class="text-[#C5A059] font-bold group-hover:translate-x-1 transition">→</span>
               </div>
             </div>
           </div>
@@ -450,41 +532,153 @@ const deleteFixture = async (id?: string) => {
     <!-- 4. FIXTURES & IDENTITY SECTION -->
     <section id="fixtures" class="py-24 px-6 bg-[#0d0d0d] border-t border-white/5">
       <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12">
+        
+        <!-- MATCH CENTER (LEFT COLUMN) -->
         <div class="lg:col-span-7 space-y-6">
-          <div>
-            <div class="text-xs font-black tracking-[0.3em] text-[#C5A059] uppercase mb-2">MATCH CENTER</div>
-            <h2 class="text-3xl font-black tracking-tight text-white uppercase">UPCOMING FIXTURES</h2>
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-xs font-black tracking-[0.3em] text-[#C5A059] uppercase mb-2">MATCH CENTER</div>
+              <h2 class="text-3xl font-black tracking-tight text-white uppercase">UPCOMING FIXTURES</h2>
+            </div>
           </div>
 
+          <!-- FORM TAMBAH JADWAL (ADMIN ONLY) -->
+          <div v-if="isAdmin" class="p-5 rounded-xl bg-[#141414] border border-[#C5A059]/40 space-y-4 shadow-lg relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-1 h-full bg-[#C5A059]"></div>
+            
+            <div class="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 class="text-xs font-black text-[#C5A059] uppercase tracking-wider flex items-center gap-2">
+                TAMBAH JADWAL PERTANDINGAN BARU
+              </h3>
+              <span class="text-[10px] bg-[#C5A059]/20 text-[#C5A059] px-2 py-0.5 rounded font-mono font-bold">ADMIN PANEL</span>
+            </div>
+
+            <form @submit.prevent="addFixture" class="space-y-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[10px] text-gray-400 font-bold block mb-1">TIM TANDANG (AWAY TEAM)</label>
+                  <input 
+                    v-model="newFixture.away" 
+                    type="text" 
+                    placeholder="Contoh: Garuda FC" 
+                    required 
+                    class="w-full bg-black border border-white/20 p-2.5 rounded text-xs text-white focus:border-[#C5A059] outline-none" 
+                  />
+                </div>
+
+                <div>
+                  <label class="text-[10px] text-gray-400 font-bold block mb-1">TANGGAL PERTANDINGAN</label>
+                  <input 
+                    v-model="newFixture.date" 
+                    type="text" 
+                    placeholder="Contoh: AUG 15, 2026" 
+                    required 
+                    class="w-full bg-black border border-white/20 p-2.5 rounded text-xs text-white focus:border-[#C5A059] outline-none" 
+                  />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[10px] text-gray-400 font-bold block mb-1">WAKTU (KICK OFF)</label>
+                  <input 
+                    v-model="newFixture.time" 
+                    type="text" 
+                    placeholder="19:00 WIB" 
+                    required 
+                    class="w-full bg-black border border-white/20 p-2.5 rounded text-xs text-white focus:border-[#C5A059] outline-none" 
+                  />
+                </div>
+
+                <div>
+                  <label class="text-[10px] text-gray-400 font-bold block mb-1">STATUS MATCH</label>
+                  <select 
+                    v-model="newFixture.status" 
+                    class="w-full bg-black border border-white/20 p-2.5 rounded text-xs text-white focus:border-[#C5A059] outline-none"
+                  >
+                    <option value="NEXT MATCH">NEXT MATCH</option>
+                    <option value="UPCOMING">UPCOMING</option>
+                    <option value="FINISHED">FINISHED</option>
+                  </select>
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                :disabled="isLoading" 
+                class="w-full bg-[#C5A059] hover:brightness-110 text-black font-black py-2.5 rounded text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 mt-2"
+              >
+                <span v-if="isLoading" class="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+                <span>{{ isLoading ? 'Menyimpan...' : 'POST JADWAL PERTANDINGAN' }}</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- KONDISI JIKA TIDAK ADA FIXTURES -->
           <div v-if="fixtures.length === 0" class="p-12 rounded-xl bg-[#141414] border border-white/5 text-center space-y-2">
-            <div class="text-3xl">⚽</div>
             <h3 class="text-base font-bold text-white uppercase">NO UPCOMING MATCHES</h3>
             <p class="text-xs text-gray-500">Belum ada jadwal pertandingan yang ditambahkan.</p>
           </div>
 
+          <!-- DAFTAR FIXTURES -->
           <div v-else class="space-y-4">
             <div 
               v-for="fixture in fixtures" 
               :key="fixture.id"
-              class="p-5 rounded-xl bg-[#141414] border border-white/5 hover:border-[#C5A059]/50 transition duration-300 flex flex-col sm:flex-row items-center justify-between gap-4"
+              class="p-5 rounded-xl bg-[#141414] border border-white/5 hover:border-[#C5A059]/50 transition duration-300 flex flex-col sm:flex-row items-center justify-between gap-4 relative group"
             >
-              <div class="text-center sm:text-left">
-                <span class="text-[10px] font-black px-2 py-0.5 rounded bg-[#C5A059]/10 text-[#C5A059] border border-[#C5A059]/30">
+              <!-- STATUS & WAKTU (ADMIN BISA UBAH STATUS LANGSUNG DARI SELECT) -->
+              <div class="text-center sm:text-left flex flex-col items-center sm:items-start">
+                <template v-if="isAdmin">
+                  <!-- QUICK EDIT STATUS DROPDOWN UTK ADMIN -->
+                  <select 
+                    :value="fixture.status"
+                    @change="updateFixtureStatus(fixture, ($event.target as HTMLSelectElement).value as any)"
+                    class="text-[10px] font-black px-2 py-1 rounded bg-black text-[#C5A059] border border-[#C5A059]/50 cursor-pointer outline-none focus:border-white"
+                  >
+                    <option value="NEXT MATCH">NEXT MATCH</option>
+                    <option value="UPCOMING">UPCOMING</option>
+                    <option value="FINISHED">FINISHED</option>
+                  </select>
+                </template>
+
+                <span v-else class="text-[10px] font-black px-2 py-0.5 rounded bg-[#C5A059]/10 text-[#C5A059] border border-[#C5A059]/30">
                   {{ fixture.status }}
                 </span>
+
                 <div class="text-xs font-bold text-gray-400 mt-2">{{ fixture.date }} • {{ fixture.time }}</div>
               </div>
 
+              <!-- TEAM MATCH VS -->
               <div class="flex items-center gap-4 text-base font-black tracking-wider">
                 <span class="text-white text-right min-w-[100px]">{{ fixture.home }}</span>
                 <span class="px-3 py-1 bg-[#C5A059] text-black text-xs font-black rounded">VS</span>
                 <span class="text-white text-left min-w-[100px]">{{ fixture.away }}</span>
               </div>
+
+              <!-- ACTION BUTTONS FOR ADMIN (EDIT FULL & DELETE) -->
+              <div v-if="isAdmin" class="flex items-center gap-2">
+                <button 
+                  @click="editFixture(fixture)" 
+                  title="Edit Detail Pertandingan"
+                  class="bg-[#C5A059]/20 hover:bg-[#C5A059] text-[#C5A059] hover:text-black p-2 rounded text-xs transition duration-300 flex items-center justify-center font-bold"
+                >
+                  Edit
+                </button>
+                <button 
+                  @click="deleteFixture(fixture.id)" 
+                  title="Hapus Jadwal"
+                  class="bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white p-2 rounded text-xs transition duration-300 flex items-center justify-center font-bold"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        <div id="colors" class="lg:col-span-5 space-y-6 bg-[#141414] p-8 rounded-2xl border border-white/5">
+        <!-- OUR IDENTITY (RIGHT COLUMN) -->
+        <div id="colors" class="lg:col-span-5 space-y-6 bg-[#141414] p-8 rounded-2xl border border-white/5 h-fit">
           <div>
             <div class="text-xs font-black tracking-[0.3em] text-[#C5A059] uppercase mb-2">OUR IDENTITY</div>
             <h2 class="text-3xl font-black tracking-tight text-white uppercase">THE COLORS</h2>
@@ -513,6 +707,60 @@ const deleteFixture = async (id?: string) => {
               <div class="text-[9px] font-mono text-gray-500">#FFFFFF</div>
             </div>
           </div>
+        </div>
+
+      </div>
+
+      <!-- MODAL EDIT FIXTURE LENGKAP -->
+      <div v-if="editingFixture" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div class="bg-[#141414] border border-[#C5A059]/40 rounded-2xl w-full max-w-md p-6 relative shadow-2xl space-y-4">
+          <button @click="editingFixture = null" class="absolute top-4 right-4 text-gray-400 hover:text-white font-bold">✕</button>
+          
+          <div class="border-b border-white/10 pb-3">
+            <h3 class="text-lg font-black text-white uppercase tracking-wider flex items-center gap-2">
+              Edit Detail Pertandingan
+            </h3>
+          </div>
+
+          <form @submit.prevent="saveEditedFixture" class="space-y-3">
+            <div>
+              <label class="text-[10px] text-gray-400 font-bold block mb-1">TIM TUAN RUMAH (HOME)</label>
+              <input v-model="editingFixture.home" type="text" required class="w-full bg-black border border-white/20 p-2.5 rounded text-xs text-white focus:border-[#C5A059] outline-none" />
+            </div>
+
+            <div>
+              <label class="text-[10px] text-gray-400 font-bold block mb-1">TIM TANDANG (AWAY)</label>
+              <input v-model="editingFixture.away" type="text" required class="w-full bg-black border border-white/20 p-2.5 rounded text-xs text-white focus:border-[#C5A059] outline-none" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-[10px] text-gray-400 font-bold block mb-1">TANGGAL</label>
+                <input v-model="editingFixture.date" type="text" required class="w-full bg-black border border-white/20 p-2.5 rounded text-xs text-white focus:border-[#C5A059] outline-none" />
+              </div>
+              <div>
+                <label class="text-[10px] text-gray-400 font-bold block mb-1">WAKTU</label>
+                <input v-model="editingFixture.time" type="text" required class="w-full bg-black border border-white/20 p-2.5 rounded text-xs text-white focus:border-[#C5A059] outline-none" />
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[10px] text-gray-400 font-bold block mb-1">STATUS</label>
+              <select v-model="editingFixture.status" class="w-full bg-black border border-white/20 p-2.5 rounded text-xs text-white focus:border-[#C5A059] outline-none">
+                <option value="NEXT MATCH">NEXT MATCH</option>
+                <option value="UPCOMING">UPCOMING</option>
+                <option value="FINISHED">FINISHED</option>
+              </select>
+            </div>
+
+            <div class="pt-2 flex gap-3">
+              <button type="button" @click="editingFixture = null" class="w-1/2 bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 rounded text-xs uppercase">Batal</button>
+              <button type="submit" :disabled="isLoading" class="w-1/2 bg-[#C5A059] hover:brightness-110 text-black font-black py-2.5 rounded text-xs uppercase flex items-center justify-center gap-2">
+                <span v-if="isLoading" class="w-3 h-3 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+                <span>Simpan</span>
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </section>
@@ -574,7 +822,7 @@ const deleteFixture = async (id?: string) => {
 
         <div class="flex flex-col items-end gap-1">
           <p class="text-[11px]">© 2026 NETZACH FOOTBALL CLUB.</p>
-          <button v-if="!isAdmin" @click="showLoginModal = true" class="text-[10px] text-gray-600 hover:text-[#C5A059] transition underline">
+          <button v-if="!isAdmin" @click="showLoginModal = true" class="text-[11px] text-[#C5A059] hover:underline font-bold">
             Admin Login
           </button>
           <button v-else @click="handleLogout" class="text-[10px] text-red-500 hover:underline">
@@ -584,7 +832,7 @@ const deleteFixture = async (id?: string) => {
       </div>
     </footer>
 
-    <!-- MODAL STATS PEMAIN -->
+    <!-- MODAL STATS PEMAIN & EDIT ADMIN -->
     <div v-if="selectedPlayer" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <div class="bg-[#141414] border border-[#C5A059]/40 rounded-2xl w-full max-w-md p-6 relative overflow-hidden shadow-2xl">
         <button @click="selectedPlayer = null" class="absolute top-4 right-4 text-gray-400 hover:text-white font-bold text-lg">✕</button>
@@ -598,7 +846,7 @@ const deleteFixture = async (id?: string) => {
           </div>
         </div>
 
-        <!-- STATS DISPLAY -->
+        <!-- STATS DISPLAY (GOALS, ASSISTS, RATING) -->
         <div class="grid grid-cols-2 gap-3 py-6">
           <div class="bg-black/50 p-3 rounded-lg border border-white/5 text-center">
             <span class="text-[10px] text-gray-400 font-bold block">MATCHES PLAYED</span>
@@ -612,35 +860,45 @@ const deleteFixture = async (id?: string) => {
             <span class="text-[10px] text-gray-400 font-bold block">ASSISTS</span>
             <span class="text-xl font-black text-white">{{ selectedPlayer.stats?.assists || 0 }}</span>
           </div>
-          <div class="bg-black/50 p-3 rounded-lg border border-white/5 text-center">
-            <span class="text-[10px] text-gray-400 font-bold block">YELLOW / RED CARDS</span>
-            <span class="text-xl font-black text-amber-500">{{ selectedPlayer.stats?.yellowCards || 0 }} / {{ selectedPlayer.stats?.redCards || 0 }}</span>
+          <div class="bg-black/50 p-3 rounded-lg border border-white/5 text-center bg-gradient-to-br from-[#C5A059]/10 to-transparent">
+            <span class="text-[10px] text-[#C5A059] font-bold block">RATING</span>
+            <span class="text-xl font-black text-[#C5A059]">{{ selectedPlayer.stats?.rating ?? 7.0 }}</span>
           </div>
         </div>
 
-        <!-- JIKA ADMIN LOGGED IN: EDIT STATS -->
+        <!-- JIKA ADMIN LOGGED IN: FORM EDIT STATS MANUAL -->
         <div v-if="isAdmin" class="border-t border-white/10 pt-4 space-y-3 bg-white/5 p-4 rounded-xl">
-          <h4 class="text-xs font-bold text-[#C5A059] uppercase">Edit Stats (Admin Mode)</h4>
-          <div v-if="selectedPlayer.stats" class="grid grid-cols-2 gap-2 text-xs">
+          <h4 class="text-xs font-bold text-[#C5A059] uppercase flex items-center justify-between">
+            <span>Edit Stats (Admin Mode)</span>
+            <span class="text-[10px] text-gray-400 font-normal">Input Manual</span>
+          </h4>
+          
+          <div v-if="selectedPlayer.stats" class="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <label class="text-[10px] text-gray-400">Matches</label>
-              <input v-model.number="selectedPlayer.stats.matches" type="number" class="w-full bg-black border border-white/20 p-1.5 rounded text-white" />
+              <label class="text-[10px] text-gray-400 block mb-1">Matches</label>
+              <input v-model.number="selectedPlayer.stats.matches" type="number" class="w-full bg-black border border-white/20 p-2 rounded text-white focus:border-[#C5A059] outline-none" />
             </div>
             <div>
-              <label class="text-[10px] text-gray-400">Goals</label>
-              <input v-model.number="selectedPlayer.stats.goals" type="number" class="w-full bg-black border border-white/20 p-1.5 rounded text-white" />
+              <label class="text-[10px] text-gray-400 block mb-1">Goals</label>
+              <input v-model.number="selectedPlayer.stats.goals" type="number" class="w-full bg-black border border-white/20 p-2 rounded text-white focus:border-[#C5A059] outline-none" />
             </div>
             <div>
-              <label class="text-[10px] text-gray-400">Assists</label>
-              <input v-model.number="selectedPlayer.stats.assists" type="number" class="w-full bg-black border border-white/20 p-1.5 rounded text-white" />
+              <label class="text-[10px] text-gray-400 block mb-1">Assists</label>
+              <input v-model.number="selectedPlayer.stats.assists" type="number" class="w-full bg-black border border-white/20 p-2 rounded text-white focus:border-[#C5A059] outline-none" />
             </div>
             <div>
-              <label class="text-[10px] text-gray-400">Yellow Cards</label>
-              <input v-model.number="selectedPlayer.stats.yellowCards" type="number" class="w-full bg-black border border-white/20 p-1.5 rounded text-white" />
+              <label class="text-[10px] text-gray-400 block mb-1">Rating (0 - 10)</label>
+              <input v-model.number="selectedPlayer.stats.rating" type="number" step="0.1" min="0" max="10" class="w-full bg-black border border-[#C5A059]/50 p-2 rounded text-[#C5A059] font-bold focus:border-[#C5A059] outline-none" />
             </div>
           </div>
-          <button @click="savePlayerStats" class="w-full bg-[#C5A059] text-black font-black py-2 rounded text-xs uppercase tracking-wider">
-            Simpan Perubahan Stats
+
+          <button 
+            @click="savePlayerStats" 
+            :disabled="isLoading" 
+            class="w-full bg-[#C5A059] text-black font-black py-2.5 rounded text-xs uppercase tracking-wider hover:brightness-110 transition flex items-center justify-center gap-2"
+          >
+            <span v-if="isLoading" class="w-3 h-3 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+            <span>{{ isLoading ? 'Menyimpan...' : 'Simpan Perubahan Stats' }}</span>
           </button>
         </div>
       </div>
@@ -649,92 +907,34 @@ const deleteFixture = async (id?: string) => {
     <!-- MODAL LOGIN ADMIN -->
     <div v-if="showLoginModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <div class="bg-[#141414] border border-[#C5A059]/40 rounded-2xl w-full max-w-sm p-6 relative shadow-2xl">
-        <button @click="showLoginModal = false" class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+        <button @click="showLoginModal = false" class="absolute top-4 right-4 text-gray-400 hover:text-white font-bold">✕</button>
         
-        <h3 class="text-xl font-black text-white uppercase tracking-wider mb-4">Admin Login</h3>
-        <p v-if="loginError" class="text-xs text-red-500 mb-3">{{ loginError }}</p>
+        <div class="flex items-center gap-2 mb-4">
+          <h3 class="text-xl font-black text-white uppercase tracking-wider">Admin Login</h3>
+        </div>
+        
+        <p v-if="loginError" class="text-xs text-red-500 mb-3 bg-red-500/10 p-2 rounded border border-red-500/20">{{ loginError }}</p>
 
         <form @submit.prevent="handleLogin" class="space-y-4">
           <div>
             <label class="text-xs text-gray-400 block mb-1">Email Admin</label>
-            <input v-model="email" type="email" required class="w-full bg-black border border-white/20 p-2 rounded text-xs text-white" />
+            <input v-model="email" type="email" required placeholder="admin@netzachfc.com" class="w-full bg-black border border-white/20 p-2.5 rounded text-xs text-white focus:border-[#C5A059] outline-none" />
           </div>
           <div>
             <label class="text-xs text-gray-400 block mb-1">Password</label>
-            <input v-model="password" type="password" required class="w-full bg-black border border-white/20 p-2 rounded text-xs text-white" />
+            <input v-model="password" type="password" required placeholder="••••••••" class="w-full bg-black border border-white/20 p-2.5 rounded text-xs text-white focus:border-[#C5A059] outline-none" />
           </div>
-          <button type="submit" class="w-full bg-[#C5A059] text-black font-black py-2.5 rounded text-xs uppercase tracking-wider">
-            LOGIN
+          
+          <button 
+            type="submit" 
+            :disabled="isLoading" 
+            class="w-full bg-gradient-to-r from-[#C5A059] to-[#9e7d3b] text-black font-black py-2.5 rounded text-xs uppercase tracking-wider hover:brightness-110 transition flex items-center justify-center gap-2"
+          >
+            <span v-if="isLoading" class="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+            <span>{{ isLoading ? 'Memverifikasi...' : 'LOGIN AKUN ADMIN' }}</span>
           </button>
         </form>
       </div>
     </div>
-
-    <!-- MODAL DASHBOARD ADMIN (KELOLA FIXTURES & SQUAD) -->
-    <div v-if="showAdminDashboard" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-      <div class="bg-[#141414] border border-[#C5A059]/40 rounded-2xl w-full max-w-2xl p-6 relative shadow-2xl max-h-[90vh] overflow-y-auto">
-        <button @click="showAdminDashboard = false" class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
-        
-        <h3 class="text-2xl font-black text-white uppercase tracking-wider mb-6 flex items-center gap-2">
-          ⚙️ ADMIN DASHBOARD
-        </h3>
-
-        <!-- BAGIAN 1: SEED SQUAD -->
-        <div class="bg-black/40 p-4 rounded-xl border border-white/10 mb-6">
-          <h4 class="text-sm font-bold text-[#C5A059] uppercase mb-2">1. Kelola Skuad Pemain</h4>
-          <p class="text-xs text-gray-400 mb-3">Jika database pemain masih kosong, klik tombol di bawah untuk mengisi 8 pemain bawaan:</p>
-          <button @click="seedPlayersToFirebase" class="bg-[#C5A059] text-black font-bold px-4 py-2 rounded text-xs uppercase tracking-wider">
-            🚀 Seed 8 Pemain Awal
-          </button>
-        </div>
-
-        <!-- BAGIAN 2: TAMBAH JADWAL (FIXTURES) -->
-        <div class="bg-black/40 p-4 rounded-xl border border-white/10 mb-6">
-          <h4 class="text-sm font-bold text-[#C5A059] uppercase mb-3">2. Tambah Jadwal Pertandingan Baru</h4>
-          <form @submit.prevent="addFixture" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <div>
-              <label class="text-gray-400 block mb-1">Tim Kandang (Home)</label>
-              <input v-model="newFixture.home" type="text" required class="w-full bg-black border border-white/20 p-2 rounded text-white" />
-            </div>
-            <div>
-              <label class="text-gray-400 block mb-1">Tim Tandang (Away)</label>
-              <input v-model="newFixture.away" type="text" placeholder="Misal: Garuda FC" required class="w-full bg-black border border-white/20 p-2 rounded text-white" />
-            </div>
-            <div>
-              <label class="text-gray-400 block mb-1">Tanggal Pertandingan</label>
-              <input v-model="newFixture.date" type="text" placeholder="Misal: AUG 15, 2026" required class="w-full bg-black border border-white/20 p-2 rounded text-white" />
-            </div>
-            <div>
-              <label class="text-gray-400 block mb-1">Waktu</label>
-              <input v-model="newFixture.time" type="text" placeholder="Misal: 19:00 WIB" required class="w-full bg-black border border-white/20 p-2 rounded text-white" />
-            </div>
-            <div class="sm:col-span-2">
-              <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded uppercase tracking-wider transition mt-2">
-                + Tambahkan Jadwal
-              </button>
-            </div>
-          </form>
-        </div>
-
-        <!-- BAGIAN 3: DAFTAR JADWAL TERPASANG -->
-        <div class="bg-black/40 p-4 rounded-xl border border-white/10">
-          <h4 class="text-sm font-bold text-[#C5A059] uppercase mb-3">3. Daftar Jadwal Saat Ini</h4>
-          <div v-if="fixtures.length === 0" class="text-xs text-gray-500">Belum ada jadwal.</div>
-          <div v-else class="space-y-2">
-            <div v-for="f in fixtures" :key="f.id" class="flex items-center justify-between bg-black/60 p-2.5 rounded border border-white/5 text-xs">
-              <div>
-                <span class="font-bold text-white">{{ f.home }} VS {{ f.away }}</span>
-                <span class="text-gray-400 ml-2">({{ f.date }} - {{ f.time }})</span>
-              </div>
-              <button @click="deleteFixture(f.id)" class="text-red-400 hover:text-red-300 font-bold px-2 py-1 bg-red-500/10 rounded">
-                Hapus
-              </button>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
   </div>
 </template>
