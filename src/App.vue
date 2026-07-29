@@ -918,7 +918,7 @@ const deleteFixture = async (id?: string) => {
         <form @submit.prevent="handleLogin" class="space-y-4">
           <div>
             <label class="text-xs text-gray-400 block mb-1">Email Admin</label>
-            <input v-model="email" type="email" required placeholder="admin@netzachfc.com" class="w-full bg-black border border-white/20 p-2.5 rounded text-xs text-white focus:border-[#C5A059] outline-none" />
+            <input v-model="email" type="email" required placeholder="admin@netzach.com" class="w-full bg-black border border-white/20 p-2.5 rounded text-xs text-white focus:border-[#C5A059] outline-none" />
           </div>
           <div>
             <label class="text-xs text-gray-400 block mb-1">Password</label>
