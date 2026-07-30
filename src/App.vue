@@ -562,15 +562,28 @@ const deleteFixture = async (id?: string) => {
             class="group relative bg-[#181818] border border-white/10 rounded-xl overflow-hidden hover:border-[#C5A059] transition duration-500 shadow-xl flex flex-col cursor-pointer"
           >
             <div class="h-72 overflow-hidden relative bg-black/40">
-              <!-- NOMOR PUNGGUNG -->
-              <span class="absolute top-3 right-3 text-3xl font-black text-white/20 group-hover:text-[#C5A059]/40 transition duration-300 z-10">
+              
+              <!-- NOMOR PUNGGUNG (POJOK KANAN ATAS) -->
+              <span class="absolute top-3 right-3 text-3xl font-black text-white/20 group-hover:text-[#C5A059]/100 transition duration-300 z-10">
                 #{{ player.number }}
               </span>
 
-              <!-- KATEGORI POSISI (GENERAL / POSISI GANDA) -->
-              <span class="absolute top-3 left-3 bg-black/70 backdrop-blur-md text-[#C5A059] border border-[#C5A059]/40 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-widest z-10">
-                {{ formatPlayerCategory(player.category) }}
-              </span>
+              <!-- AREA KIRI ATAS: KATEGORI POSISI & BADGE C (DISAMPINGNYA PERSIS) -->
+              <div class="absolute top-3 left-3 flex items-center gap-1.5 z-20">
+                <!-- KATEGORI POSISI -->
+                <span class="bg-black/70 backdrop-blur-md text-[#C5A059] border border-[#C5A059]/40 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-widest">
+                  {{ formatPlayerCategory(player.category) }}
+                </span>
+
+                <!-- BADGE C (KHUSUS MARLON, PERSIS DI SEBELAH KATEGORI) -->
+                <span 
+                  v-if="player.name.trim().toUpperCase() === 'MARLON'" 
+                  class="bg-[#C5A059] text-black font-black text-[10px] h-[20px] px-1.5 flex items-center justify-center rounded border border-[#f3e0aa] shadow-md tracking-none"
+                  title="Captain"
+                >
+                  C
+                </span>
+              </div>
 
               <!-- RATING RATA-RATA AUTO CALCULATED -->
               <div class="absolute bottom-3 left-3 z-10 bg-gradient-to-r from-[#C5A059] to-[#9e7d3b] text-black px-2.5 py-1 rounded-md flex items-center gap-1 shadow-lg border border-[#f3e0aa]/40">
