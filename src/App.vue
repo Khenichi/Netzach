@@ -96,6 +96,7 @@ import imgValerio from '/src/assets/Screenshot 2026-07-28 100319.png'
 import imgKevin from '/src/assets/Screenshot 2026-07-28 100412.png'
 import imgAcel from '/src/assets/Screenshot 2026-07-30 151858.png'
 import imgNetzach from '/src/assets/Screenshot 2026-07-28 103255.png'
+import imgNetzachCrow from '/src/assets/WhatsApp Image 2026-07-28 at 10.50.06 AM (1).jpeg'
 
 const localPhotos: Record<string, string> = {
   'KEVIN IMANUEL': imgImanuel,
@@ -417,7 +418,6 @@ const deleteFixture = async (id?: string) => {
             class="hover:text-white transition flex items-center gap-1 text-[#C5A059]"
           >
             <span>INSTAGRAM</span>
-            <span>↗</span>
           </a>
           <button @click="toggleAudio" class="hover:text-white transition flex items-center gap-1">
             <span>MUSIC {{ isPlaying ? 'ON' : 'OFF' }}</span>
@@ -430,10 +430,13 @@ const deleteFixture = async (id?: string) => {
 
       <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         <a href="#" class="flex items-center gap-3 group">
-          <div class="w-10 h-12 border-2 border-[#C5A059] flex items-center justify-center bg-black shadow-[0_0_15px_rgba(197,160,89,0.3)] relative group-hover:scale-105 transition duration-300">
-            <span class="text-[#C5A059] font-black text-lg tracking-tighter">NZ</span>
-            <span class="absolute bottom-0.5 text-[7px] text-[#C5A059] tracking-widest font-black">FC</span>
-          </div>
+          <!-- GAMBAR LOGO NETZACH -->
+          <img 
+            :src="imgNetzach" 
+            alt="Netzach FC Logo" 
+            class="w-10 h-12 object-contain group-hover:scale-105 transition duration-300 drop-shadow-[0_0_8px_rgba(197,160,89,0.4)]"
+          />
+
           <div class="flex flex-col">
             <span class="text-xl font-black tracking-widest text-white leading-none">NETZACH</span>
             <span class="text-[10px] font-bold tracking-[0.3em] text-[#C5A059]">FOOTBALL CLUB</span>
@@ -462,7 +465,7 @@ const deleteFixture = async (id?: string) => {
       <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
         <div class="lg:col-span-7 space-y-6 text-center lg:text-left">
           <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#C5A059]/40 bg-[#C5A059]/10 text-[#C5A059] text-xs font-bold tracking-widest uppercase">
-            <span>⚔️</span> RISE TO GLORY
+            RISE TO GLORY
           </div>
           
           <h1 class="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[0.95] text-white">
@@ -489,7 +492,7 @@ const deleteFixture = async (id?: string) => {
         <div class="lg:col-span-5 relative flex justify-center">
           <div class="relative w-full max-w-md aspect-[3/4] rounded-2xl p-1 bg-gradient-to-b from-[#C5A059] via-[#C5A059]/20 to-transparent shadow-[0_0_50px_rgba(197,160,89,0.15)]">
             <div class="w-full h-full bg-[#141414] rounded-xl overflow-hidden relative group">
-              <img :src="imgNetzach" alt="NetZach FC Spirit" class="w-full h-full object-cover filter contrast-125 brightness-90 group-hover:scale-105 transition duration-700" />
+              <img :src="imgNetzachCrow" alt="NetZach FC Spirit" class="w-full h-full object-cover filter contrast-125 brightness-90 group-hover:scale-105 transition duration-700" />
               <div class="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-transparent to-transparent"></div>
               <div class="absolute bottom-6 left-6 right-6 p-4 rounded-lg bg-black/60 backdrop-blur-md border border-white/10">
                 <span class="text-[10px] font-black tracking-widest text-[#C5A059] uppercase">SEASON 2026/2027</span>
@@ -728,7 +731,7 @@ const deleteFixture = async (id?: string) => {
                   @click="selectedFixtureStats = fixture" 
                   class="bg-white/10 hover:bg-[#C5A059] text-white hover:text-black px-3 py-1.5 rounded text-xs font-bold transition flex items-center gap-1"
                 >
-                  <span>📊 Stats</span>
+                  <span>Stats</span>
                 </button>
 
                 <template v-if="isAdmin">
@@ -793,7 +796,6 @@ const deleteFixture = async (id?: string) => {
               class="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white font-bold py-2.5 px-4 rounded-lg text-xs flex items-center justify-center gap-2 hover:opacity-90 transition"
             >
               <span>FOLLOW INSTAGRAM @NETZACH.FC</span>
-              <span>↗</span>
             </a>
           </div>
         </div>
