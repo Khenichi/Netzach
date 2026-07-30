@@ -106,7 +106,7 @@ const localPhotos: Record<string, string> = {
   'KEVIN TAN': imgKetan,
   'VALERIO': imgValerio,
   'KEVIN': imgKevin,
-  'ACEL': imgAcel
+  'AXEL': imgAcel
 }
 
 // -------------------------------------------------------------
