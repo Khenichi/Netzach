@@ -517,7 +517,7 @@ const deleteFixture = async (id?: string) => {
           <!-- Change #1: Kategori Filter General Position -->
           <div class="flex flex-wrap gap-2">
             <button 
-              v-for="cat in ['All', 'Keeper', 'Defender', 'Midfielder', 'Forward']" 
+              v-for="cat in ['All', 'Keeper', 'Defender', 'Midfielder', 'Forward', 'Striker']" 
               :key="cat"
               @click="activeCategory = cat"
               :class="[
@@ -589,7 +589,7 @@ const deleteFixture = async (id?: string) => {
                   <span><b class="text-[#C5A059]">{{ getPlayerComputedStats(player).goals }}</b> G</span>
                   <span><b class="text-white">{{ getPlayerComputedStats(player).assists }}</b> A</span>
                   <!-- Change #9: Khusus GK Tampilkan Goal Conceded -->
-                  <span v-if="player.category === 'Keeper'" class="text-red-400">
+                  <span v-if="player.category === 'Keeper' || player.name === 'KHENICHI'" class="text-red-400">
                     <b>{{ getPlayerComputedStats(player).goalsConceded }}</b> GC
                   </span>
                 </div>
@@ -846,7 +846,7 @@ const deleteFixture = async (id?: string) => {
             </div>
 
             <!-- Change #9: Jika Goalkeeper Tampilkan Total Goal Conceded -->
-            <div v-if="selectedPlayer.category === 'Keeper'" class="mt-3 bg-red-950/30 p-3 rounded-lg border border-red-500/30 text-center font-mono">
+            <div v-if="selectedPlayer.category === 'Keeper' || selectedPlayer.name === 'KHENICHI'" class="mt-3 bg-red-950/30 p-3 rounded-lg border border-red-500/30 text-center font-mono">
               <div class="text-xs text-red-400">GOAL CONCEDED (KEBOBOLAN)</div>
               <div class="text-2xl font-black text-red-500">{{ getPlayerComputedStats(selectedPlayer).goalsConceded }}</div>
             </div>
