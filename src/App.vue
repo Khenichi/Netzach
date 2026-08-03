@@ -64,13 +64,13 @@ interface MatchPlayerStat {
 interface Player {
   id?: string
   name: string
-  // 'category' mendukung String Tunggal atau Array Posisi Ganda (Multi-Role)
   category: GeneralPosition | GeneralPosition[]
   photo: string
   number: number
   matchHistory?: MatchPlayerStat[]
 }
 
+// ✅ UPDATED: Tambah field homeScore & awayScore
 interface Fixture {
   id?: string
   home: string
@@ -79,6 +79,8 @@ interface Fixture {
   time: string
   status: 'NEXT MATCH' | 'UPCOMING' | 'FINISHED'
   matchStats?: MatchPlayerStat[]
+  homeScore?: number | null
+  awayScore?: number | null
 }
 
 // -------------------------------------------------------------
@@ -87,7 +89,7 @@ interface Fixture {
 import imgImanuel from '/src/assets/Screenshot 2026-07-28 100646.png'
 import imgKhenichi from '/src/assets/Screenshot 2026-07-28 100359.png'
 import imgHansel from '/src/assets/Screenshot 2026-07-28 100633.png'
-import imgMarlon from '/src/assets/Screenshot 2026-07-28 100336.png'
+import imgMarlon from '/src/assets/Screenshot 2026-07-28 100633.png'
 import imgSony from '/src/assets/Screenshot 2026-07-28 100346.png'
 import imgKetan from '/src/assets/Screenshot 2026-07-28 100654.png'
 import imgValerio from '/src/assets/Screenshot 2026-07-28 100319.png'
@@ -109,7 +111,6 @@ const localPhotos: Record<string, string> = {
   'AXEL': imgAcel
 }
 
-// Helper Aman untuk Penanganan Gambar Pemain
 const getPlayerImage = (player: Player): string => {
   if (player.photo && player.photo.trim() !== '') {
     return player.photo
@@ -127,7 +128,6 @@ const selectedFixtureStats = ref<Fixture | null>(null)
 
 const isLoading = ref<boolean>(false)
 
-// Auth States
 const isAdmin = ref<boolean>(false)
 const showLoginModal = ref<boolean>(false)
 const showAdminDashboard = ref<boolean>(false)
@@ -135,17 +135,19 @@ const email = ref('')
 const password = ref('')
 const loginError = ref('')
 
-// Firestore Collections
 const players = ref<Player[]>([])
 const fixtures = ref<Fixture[]>([])
 
+// ✅ UPDATED: newFixture include homeScore & awayScore
 const newFixture = ref<Fixture>({
   home: 'NetZach FC',
   away: '',
   date: '',
   time: '19:00 WIB',
   status: 'UPCOMING',
-  matchStats: []
+  matchStats: [],
+  homeScore: null,
+  awayScore: null
 })
 
 const news = ref([
@@ -166,7 +168,7 @@ const news = ref([
 ])
 
 // -------------------------------------------------------------
-// 5. HELPER COMPUTED: AGGREGATE PLAYER STATS
+// 5. HELPER COMPUTED
 // -------------------------------------------------------------
 const getPlayerComputedStats = (player: Player) => {
   if (!player.matchHistory || player.matchHistory.length === 0) {
@@ -184,12 +186,34 @@ const getPlayerComputedStats = (player: Player) => {
   return { matches, goals, assists, rating: avgRating, goalsConceded }
 }
 
-// Format Posisi Pemain (String Tunggal / Array)
 const formatPlayerCategory = (cat: GeneralPosition | GeneralPosition[]) => {
   if (Array.isArray(cat)) {
     return cat.join(' / ')
   }
   return cat
+}
+
+const getOpponentFromHistory = (fixtureId?: string): string => {
+  if (!fixtureId) return 'Unknown Opponent'
+  const fixture = fixtures.value.find(f => f.id === fixtureId)
+  return fixture?.away || 'Unknown Opponent'
+}
+
+const getFixtureDateFromHistory = (fixtureId?: string): string => {
+  if (!fixtureId) return '-'
+  const fixture = fixtures.value.find(f => f.id === fixtureId)
+  return fixture?.date || '-'
+}
+
+// ✅ NEW HELPER: Ambil skor pertandingan dari history
+const getFixtureScoreFromHistory = (fixtureId?: string): string => {
+  if (!fixtureId) return ''
+  const fixture = fixtures.value.find(f => f.id === fixtureId)
+  if (!fixture || fixture.homeScore === null || fixture.homeScore === undefined || 
+      fixture.awayScore === null || fixture.awayScore === undefined) {
+    return ''
+  }
+  return `${fixture.homeScore} - ${fixture.awayScore}`
 }
 
 // -------------------------------------------------------------
@@ -228,7 +252,6 @@ onMounted(() => {
   })
 })
 
-// LOGIKA FILTER POSISI DUKUNGAN MULTI-ROLE (POSISI GANDA)
 const filteredPlayers = computed(() => {
   if (activeCategory.value === 'All') return players.value
 
@@ -263,7 +286,6 @@ const handleLogout = async () => {
   showAdminDashboard.value = false
 }
 
-// Seed Data Default dengan Support Posisi Ganda (Multi-Role)
 const seedPlayersToFirebase = async () => {
   if (!confirm('Unggah data pemain default ke database Firebase?')) return
 
@@ -300,6 +322,7 @@ const openPlayerFromFixture = (playerId: string) => {
   }
 }
 
+// ✅ UPDATED: addFixture include homeScore & awayScore
 const addFixture = async () => {
   if (!newFixture.value.away || !newFixture.value.date) {
     alert('Isi lawan dan tanggal pertandingan terlebih dahulu!')
@@ -308,7 +331,16 @@ const addFixture = async () => {
   isLoading.value = true
   try {
     await addDoc(collection(db, 'fixtures'), { ...newFixture.value, matchStats: [] })
-    newFixture.value = { home: 'NetZach FC', away: '', date: '', time: '19:00 WIB', status: 'UPCOMING', matchStats: [] }
+    newFixture.value = { 
+      home: 'NetZach FC', 
+      away: '', 
+      date: '', 
+      time: '19:00 WIB', 
+      status: 'UPCOMING', 
+      matchStats: [],
+      homeScore: null,
+      awayScore: null
+    }
     alert('Jadwal pertandingan berhasil ditambahkan!')
   } catch (err) {
     alert('Gagal menambahkan jadwal.')
@@ -338,8 +370,12 @@ const editFixture = (fixture: Fixture) => {
   if (!editingFixture.value?.matchStats) {
     editingFixture.value!.matchStats = []
   }
+  // Default score ke null jika undefined
+  if (editingFixture.value?.homeScore === undefined) editingFixture.value!.homeScore = null
+  if (editingFixture.value?.awayScore === undefined) editingFixture.value!.awayScore = null
 }
 
+// ✅ FIXED: saveEditedFixture - sekarang menghapus stat yang dihapus dari matchHistory pemain
 const saveEditedFixture = async () => {
   if (!editingFixture.value || !editingFixture.value.id) return
   isLoading.value = true
@@ -351,22 +387,45 @@ const saveEditedFixture = async () => {
       date: editingFixture.value.date,
       time: editingFixture.value.time,
       status: editingFixture.value.status,
-      matchStats: editingFixture.value.matchStats || []
+      matchStats: editingFixture.value.matchStats || [],
+      homeScore: editingFixture.value.homeScore,
+      awayScore: editingFixture.value.awayScore
     })
 
-    if (editingFixture.value.matchStats) {
-      for (const stat of editingFixture.value.matchStats) {
-        const targetPlayer = players.value.find(p => p.id === stat.playerId || p.name === stat.playerName)
-        if (targetPlayer && targetPlayer.id) {
-          let history = targetPlayer.matchHistory || []
-          history = history.filter(h => h.playerId !== editingFixture.value?.id)
-          history.push({ ...stat, playerId: editingFixture.value.id! })
-          
-          await updateDoc(doc(db, 'players', targetPlayer.id), {
-            matchHistory: history
-          })
-        }
+    // ✅ LOGIKA BARU: Identifikasi semua pemain yang terpengaruh
+    const currentStatPlayerIds = editingFixture.value.matchStats?.map(s => s.playerId) || []
+    const affectedPlayerIds = new Set<string>()
+    
+    // 1. Pemain yang pernah punya history di fixture ini (perlu dibersihkan)
+    // 2. Pemain yang ada di stat baru (perlu ditambahkan)
+    for (const player of players.value) {
+      if (!player.id) continue
+      const hasHistoryHere = player.matchHistory?.some(h => h.playerId === editingFixture.value?.id)
+      const hasNewStat = currentStatPlayerIds.includes(player.id)
+      
+      if (hasHistoryHere || hasNewStat) {
+        affectedPlayerIds.add(player.id)
       }
+    }
+    
+    // Update setiap affected player
+    for (const playerId of affectedPlayerIds) {
+      const player = players.value.find(p => p.id === playerId)
+      if (!player || !player.id) continue
+      
+      let history = player.matchHistory || []
+      // Filter out SEMUA entry untuk fixture ini (bersihkan yang lama, termasuk yang dihapus)
+      history = history.filter(h => h.playerId !== editingFixture.value?.id)
+      
+      // Jika pemain ini masih ada di matchStats baru, tambahkan yang baru
+      const newStat = editingFixture.value.matchStats?.find(s => s.playerId === player.id)
+      if (newStat) {
+        history.push({ ...newStat, playerId: editingFixture.value.id! })
+      }
+      
+      await updateDoc(doc(db, 'players', player.id), {
+        matchHistory: history
+      })
     }
 
     editingFixture.value = null
@@ -405,6 +464,18 @@ const deleteFixture = async (id?: string) => {
   if (confirm('Hapus jadwal ini?')) {
     isLoading.value = true
     try {
+      // ✅ NEW: Juga bersihkan history pemain terkait saat fixture dihapus total
+      const fixtureToDelete = fixtures.value.find(f => f.id === id)
+      
+      for (const player of players.value) {
+        if (!player.id || !player.matchHistory) continue
+        const hasHistory = player.matchHistory.some(h => h.playerId === id)
+        if (hasHistory) {
+          const newHistory = player.matchHistory.filter(h => h.playerId !== id)
+          await updateDoc(doc(db, 'players', player.id), { matchHistory: newHistory })
+        }
+      }
+      
       await deleteDoc(doc(db, 'fixtures', id))
     } finally {
       isLoading.value = false
@@ -527,7 +598,6 @@ const deleteFixture = async (id?: string) => {
             <h2 class="text-3xl sm:text-4xl font-black tracking-tight text-white uppercase">OFFICIAL SQUAD</h2>
           </div>
 
-          <!-- Kategori Filter General Position -->
           <div class="flex flex-wrap gap-2">
             <button 
               v-for="cat in ['All', 'Goal Keeper', 'Defender', 'Midfielder', 'Forward']" 
@@ -553,7 +623,6 @@ const deleteFixture = async (id?: string) => {
           </button>
         </div>
 
-        <!-- PLAYER CARDS GRID -->
         <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           <div 
             v-for="player in filteredPlayers" 
@@ -562,20 +631,15 @@ const deleteFixture = async (id?: string) => {
             class="group relative bg-[#181818] border border-white/10 rounded-xl overflow-hidden hover:border-[#C5A059] transition duration-500 shadow-xl flex flex-col cursor-pointer"
           >
             <div class="h-72 overflow-hidden relative bg-black/40">
-              
-              <!-- NOMOR PUNGGUNG (POJOK KANAN ATAS) -->
               <span class="absolute top-3 right-3 text-3xl font-black text-white/20 group-hover:text-[#C5A059]/100 transition duration-300 z-10">
                 #{{ player.number }}
               </span>
 
-              <!-- AREA KIRI ATAS: KATEGORI POSISI & BADGE C (DISAMPINGNYA PERSIS) -->
               <div class="absolute top-3 left-3 flex items-center gap-1.5 z-20">
-                <!-- KATEGORI POSISI -->
                 <span class="bg-black/70 backdrop-blur-md text-[#C5A059] border border-[#C5A059]/40 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-widest">
                   {{ formatPlayerCategory(player.category) }}
                 </span>
 
-                <!-- BADGE C (KHUSUS MARLON, PERSIS DI SEBELAH KATEGORI) -->
                 <span 
                   v-if="player.name.trim().toUpperCase() === 'MARLON'" 
                   class="bg-[#C5A059] text-black font-black text-[10px] h-[20px] px-1.5 flex items-center justify-center rounded border border-[#f3e0aa] shadow-md tracking-none"
@@ -585,7 +649,6 @@ const deleteFixture = async (id?: string) => {
                 </span>
               </div>
 
-              <!-- RATING RATA-RATA AUTO CALCULATED -->
               <div class="absolute bottom-3 left-3 z-10 bg-gradient-to-r from-[#C5A059] to-[#9e7d3b] text-black px-2.5 py-1 rounded-md flex items-center gap-1 shadow-lg border border-[#f3e0aa]/40">
                 <span class="text-[9px] font-black tracking-tighter uppercase">AVG RATING</span>
                 <span class="text-xs font-black font-mono leading-none">
@@ -593,7 +656,6 @@ const deleteFixture = async (id?: string) => {
                 </span>
               </div>
 
-              <!-- FOTO PEMAIN TERHUBUNG OPTIMAL -->
               <img 
                 :src="getPlayerImage(player)" 
                 :alt="player.name" 
@@ -609,7 +671,6 @@ const deleteFixture = async (id?: string) => {
                 </h3>
               </div>
 
-              <!-- Mini Stats -->
               <div class="mt-4 pt-3 border-t border-white/5 flex justify-between items-center text-[10px] text-gray-400 font-mono">
                 <div class="flex items-center gap-2.5">
                   <span><b class="text-white">{{ getPlayerComputedStats(player).matches }}</b> M</span>
@@ -631,7 +692,6 @@ const deleteFixture = async (id?: string) => {
     <section id="fixtures" class="py-24 px-6 bg-[#0d0d0d] border-t border-white/5">
       <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12">
         
-        <!-- MATCH CENTER -->
         <div class="lg:col-span-7 space-y-6">
           <div class="flex items-center justify-between">
             <div>
@@ -640,7 +700,7 @@ const deleteFixture = async (id?: string) => {
             </div>
           </div>
 
-          <!-- FORM TAMBAH JADWAL (ADMIN ONLY) -->
+          <!-- FORM TAMBAH JADWAL (ADMIN ONLY) - ✅ UPDATED DENGAN INPUT SKOR -->
           <div v-if="isAdmin" class="p-5 rounded-xl bg-[#141414] border border-[#C5A059]/40 space-y-4 shadow-lg relative overflow-hidden">
             <div class="absolute top-0 left-0 w-1 h-full bg-[#C5A059]"></div>
             
@@ -701,6 +761,35 @@ const deleteFixture = async (id?: string) => {
                 </div>
               </div>
 
+              <!-- ✅ NEW: Input Skor (Opsional, muncul saat status = FINISHED) -->
+              <div 
+                v-if="newFixture.status === 'FINISHED'" 
+                class="grid grid-cols-2 gap-3 p-3 rounded-lg bg-black/30 border border-dashed border-[#C5A059]/30"
+              >
+                <div>
+                  <label class="text-[10px] text-[#C5A059] font-bold block mb-1">⚽ SKOR HOME (NetZach)</label>
+                  <input 
+                    v-model.number="newFixture.homeScore" 
+                    type="number" 
+                    min="0" 
+                    max="99"
+                    placeholder="0" 
+                    class="w-full bg-black border border-white/20 p-2.5 rounded text-xs text-white focus:border-[#C5A059] outline-none text-center font-bold" 
+                  />
+                </div>
+                <div>
+                  <label class="text-[10px] text-[#C5A059] font-bold block mb-1">⚽ SKOR AWAY (Lawan)</label>
+                  <input 
+                    v-model.number="newFixture.awayScore" 
+                    type="number" 
+                    min="0" 
+                    max="99"
+                    placeholder="0" 
+                    class="w-full bg-black border border-white/20 p-2.5 rounded text-xs text-white focus:border-[#C5A059] outline-none text-center font-bold" 
+                  />
+                </div>
+              </div>
+
               <button 
                 type="submit" 
                 :disabled="isLoading" 
@@ -712,17 +801,20 @@ const deleteFixture = async (id?: string) => {
             </form>
           </div>
 
-          <!-- DAFTAR FIXTURES -->
           <div v-if="fixtures.length === 0" class="p-12 rounded-xl bg-[#141414] border border-white/5 text-center space-y-2">
             <h3 class="text-base font-bold text-white uppercase">NO UPCOMING MATCHES</h3>
             <p class="text-xs text-gray-500">Belum ada jadwal pertandingan yang ditambahkan.</p>
           </div>
 
+          <!-- ✅ UPDATED: Fixture card dengan skor -->
           <div v-else class="space-y-4">
             <div 
               v-for="fixture in fixtures" 
               :key="fixture.id"
-              class="p-5 rounded-xl bg-[#141414] border border-white/5 hover:border-[#C5A059]/50 transition duration-300 flex flex-col sm:flex-row items-center justify-between gap-4 relative group"
+              :class="[
+                'p-5 rounded-xl bg-[#141414] border border-white/5 hover:border-[#C5A059]/50 transition duration-300 flex flex-col sm:flex-row items-center justify-between gap-4 relative group',
+                fixture.status === 'FINISHED' && fixture.homeScore !== null && fixture.homeScore !== undefined ? 'ring-1 ring-[#C5A059]/20' : ''
+              ]"
             >
               <div class="text-center sm:text-left flex flex-col items-center sm:items-start">
                 <template v-if="isAdmin">
@@ -737,21 +829,38 @@ const deleteFixture = async (id?: string) => {
                   </select>
                 </template>
 
-                <span v-else class="text-[10px] font-black px-2 py-0.5 rounded bg-[#C5A059]/10 text-[#C5A059] border border-[#C5A059]/30">
+                <span v-else :class="[
+                  'text-[10px] font-black px-2 py-0.5 rounded border',
+                  fixture.status === 'FINISHED' 
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                    : 'bg-[#C5A059]/10 text-[#C5A059] border-[#C5A059]/30'
+                ]">
                   {{ fixture.status }}
                 </span>
 
                 <div class="text-xs font-bold text-gray-400 mt-2">{{ fixture.date }} • {{ fixture.time }}</div>
               </div>
 
-              <!-- TEAM MATCH VS -->
+              <!-- ✅ UPDATED: TEAM MATCH VS / Skor -->
               <div class="flex items-center gap-4 text-base font-black tracking-wider">
                 <span class="text-white text-right min-w-[100px]">{{ fixture.home }}</span>
-                <span class="px-3 py-1 bg-[#C5A059] text-black text-xs font-black rounded">VS</span>
+                
+                <!-- Tampilkan skor jika FINISHED dan skor sudah diisi -->
+                <template v-if="fixture.status === 'FINISHED' && fixture.homeScore !== null && fixture.homeScore !== undefined && fixture.awayScore !== null && fixture.awayScore !== undefined">
+                  <div class="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-[#C5A059] to-[#9e7d3b] rounded-lg shadow-lg">
+                    <span class="text-2xl font-black text-black leading-none">{{ fixture.homeScore }}</span>
+                    <span class="text-sm font-bold text-black/40">:</span>
+                    <span class="text-2xl font-black text-black leading-none">{{ fixture.awayScore }}</span>
+                  </div>
+                  <span class="text-[9px] text-emerald-400 font-black uppercase tracking-widest">FT</span>
+                </template>
+                
+                <!-- Default VS badge -->
+                <span v-else class="px-3 py-1 bg-[#C5A059] text-black text-xs font-black rounded">VS</span>
+                
                 <span class="text-white text-left min-w-[100px]">{{ fixture.away }}</span>
               </div>
 
-              <!-- Action Stats & Admin Buttons -->
               <div class="flex items-center gap-2">
                 <button 
                   @click="selectedFixtureStats = fixture" 
@@ -779,7 +888,6 @@ const deleteFixture = async (id?: string) => {
           </div>
         </div>
 
-        <!-- ABOUT US / IDENTITY -->
         <div id="about" class="lg:col-span-5 space-y-6">
           <div class="text-xs font-black tracking-[0.3em] text-[#C5A059] uppercase mb-2">WHO WE ARE</div>
           <h2 class="text-3xl font-black tracking-tight text-white uppercase">ABOUT NETZACH FC</h2>
@@ -830,32 +938,135 @@ const deleteFixture = async (id?: string) => {
     </section>
 
     <!-- 6. MODALS -->
-    <!-- A. MODAL PLAYER DETAILS -->
+    <!-- A. MODAL PLAYER DETAILS - ✅ UPDATED: Tampilkan skor saat match history -->
     <div v-if="selectedPlayer" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div class="bg-[#141414] border border-[#C5A059]/40 w-full max-w-lg rounded-2xl p-6 relative space-y-6">
-        <button @click="selectedPlayer = null" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">✕</button>
+      <div class="bg-[#141414] border border-[#C5A059]/40 w-full max-w-2xl rounded-2xl p-6 relative space-y-6 max-h-[90vh] overflow-y-auto custom-scroll">
+        <button @click="selectedPlayer = null" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl z-10">✕</button>
 
-        <div class="flex items-center gap-4">
-          <img :src="getPlayerImage(selectedPlayer)" class="w-20 h-24 object-cover rounded-lg border border-[#C5A059]/40" />
-          <div>
-            <span class="text-[10px] bg-[#C5A059]/20 text-[#C5A059] px-2 py-0.5 rounded font-black">#{{ selectedPlayer.number }}</span>
-            <h2 class="text-2xl font-black text-white mt-1">{{ selectedPlayer.name }}</h2>
-            <p class="text-xs text-gray-400">{{ formatPlayerCategory(selectedPlayer.category) }}</p>
+        <div class="flex items-center gap-4 pb-4 border-b border-white/10">
+          <img :src="getPlayerImage(selectedPlayer)" class="w-24 h-28 object-cover rounded-lg border border-[#C5A059]/40" />
+          <div class="flex-1">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-[10px] bg-[#C5A059]/20 text-[#C5A059] px-2 py-0.5 rounded font-black">#{{ selectedPlayer.number }}</span>
+              <span class="text-[10px] bg-black/70 border border-[#C5A059]/40 text-[#C5A059] px-2 py-0.5 rounded font-black uppercase tracking-wider">
+                {{ formatPlayerCategory(selectedPlayer.category) }}
+              </span>
+              <span 
+                v-if="selectedPlayer.name.trim().toUpperCase() === 'MARLON'" 
+                class="bg-[#C5A059] text-black font-black text-[10px] h-[20px] px-1.5 flex items-center justify-center rounded border border-[#f3e0aa] shadow-md"
+                title="Captain"
+              >
+                C
+              </span>
+            </div>
+            <h2 class="text-2xl font-black text-white mt-2">{{ selectedPlayer.name }}</h2>
+            <p class="text-[11px] text-gray-400 mt-1 font-mono">
+              Bergabung di Season 2026/2027 • NetZach FC
+            </p>
           </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-3 bg-black/50 p-4 rounded-xl text-center border border-white/5">
+        <div class="grid grid-cols-4 gap-3 bg-black/50 p-4 rounded-xl text-center border border-white/5">
           <div>
-            <div class="text-[10px] text-gray-400">MATCHES</div>
+            <div class="text-[9px] text-gray-400 uppercase tracking-wider">Matches</div>
             <div class="text-lg font-black text-white">{{ getPlayerComputedStats(selectedPlayer).matches }}</div>
           </div>
           <div>
-            <div class="text-[10px] text-gray-400">GOALS</div>
+            <div class="text-[9px] text-gray-400 uppercase tracking-wider">Goals</div>
             <div class="text-lg font-black text-[#C5A059]">{{ getPlayerComputedStats(selectedPlayer).goals }}</div>
           </div>
           <div>
-            <div class="text-[10px] text-gray-400">ASSISTS</div>
+            <div class="text-[9px] text-gray-400 uppercase tracking-wider">Assists</div>
             <div class="text-lg font-black text-white">{{ getPlayerComputedStats(selectedPlayer).assists }}</div>
+          </div>
+          <div>
+            <div class="text-[9px] text-gray-400 uppercase tracking-wider">Avg Rating</div>
+            <div class="text-lg font-black text-[#C5A059]">★ {{ getPlayerComputedStats(selectedPlayer).rating }}</div>
+          </div>
+        </div>
+
+        <div 
+          v-if="selectedPlayer.category === 'Goal Keeper' || (Array.isArray(selectedPlayer.category) && selectedPlayer.category.includes('Goal Keeper'))"
+          class="p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-between"
+        >
+          <span class="text-xs font-bold text-red-400 uppercase tracking-wider">🧤 Goals Conceded (Kiper)</span>
+          <span class="text-lg font-black text-red-400">{{ getPlayerComputedStats(selectedPlayer).goalsConceded }}</span>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xs font-black text-[#C5A059] uppercase tracking-[0.2em]">📊 Match History</h3>
+            <span class="text-[10px] bg-[#C5A059]/20 text-[#C5A059] px-2 py-0.5 rounded font-mono font-bold">
+              {{ selectedPlayer.matchHistory?.length || 0 }} PERTANDINGAN
+            </span>
+          </div>
+
+          <div 
+            v-if="!selectedPlayer.matchHistory || selectedPlayer.matchHistory.length === 0" 
+            class="py-8 text-center bg-black/30 rounded-xl border border-dashed border-white/10"
+          >
+            <p class="text-xs text-gray-500">Belum ada pertandingan yang tercatat untuk pemain ini.</p>
+            <p class="text-[10px] text-gray-600 mt-1">Admin bisa menambahkan statistik via Edit Fixture.</p>
+          </div>
+
+          <div v-else class="space-y-2 max-h-72 overflow-y-auto pr-1 custom-scroll">
+            <div 
+              v-for="(match, index) in selectedPlayer.matchHistory" 
+              :key="match.playerId || index"
+              class="p-3 rounded-lg bg-black/40 border border-white/5 hover:border-[#C5A059]/50 transition duration-200"
+            >
+              <div class="flex items-center justify-between mb-2 pb-2 border-b border-white/5">
+                <div class="flex items-center gap-2">
+                  <span class="text-white text-sm font-black">NetZach FC</span>
+                  <span class="text-[#C5A059] text-xs font-bold">VS</span>
+                  <span class="text-white text-sm font-black">
+                    {{ getOpponentFromHistory(match.playerId) }}
+                  </span>
+                  <!-- ✅ NEW: Tampilkan skor di history -->
+                  <span 
+                    v-if="getFixtureScoreFromHistory(match.playerId)" 
+                    class="ml-2 text-[10px] bg-gradient-to-r from-[#C5A059] to-[#9e7d3b] text-black px-2 py-0.5 rounded font-black"
+                  >
+                    {{ getFixtureScoreFromHistory(match.playerId) }}
+                  </span>
+                </div>
+                <span class="text-[10px] text-gray-400 font-mono">
+                  {{ getFixtureDateFromHistory(match.playerId) }}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-5 gap-2 text-center">
+                <div>
+                  <div class="text-[8px] text-gray-500 uppercase">Goals</div>
+                  <div class="text-sm font-black text-[#C5A059]">{{ match.goals }}</div>
+                </div>
+                <div>
+                  <div class="text-[8px] text-gray-500 uppercase">Assists</div>
+                  <div class="text-sm font-black text-white">{{ match.assists }}</div>
+                </div>
+                <div v-if="selectedPlayer.category === 'Goal Keeper' || (Array.isArray(selectedPlayer.category) && selectedPlayer.category.includes('Goal Keeper'))">
+                  <div class="text-[8px] text-gray-500 uppercase">Conceded</div>
+                  <div class="text-sm font-black text-red-400">{{ match.goalsConceded || 0 }}</div>
+                </div>
+                <div>
+                  <div class="text-[8px] text-gray-500 uppercase">Minutes</div>
+                  <div class="text-sm font-black text-white">{{ match.minutesPlayed || 90 }}'</div>
+                </div>
+                <div class="col-span-2">
+                  <div class="text-[8px] text-gray-500 uppercase">Rating</div>
+                  <div 
+                    :class="[
+                      'text-sm font-black',
+                      match.rating >= 8 ? 'text-emerald-400' : 
+                      match.rating >= 7 ? 'text-[#C5A059]' : 
+                      match.rating >= 6 ? 'text-yellow-400' : 'text-red-400'
+                    ]"
+                  >
+                    ★ {{ match.rating.toFixed(1) }}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -866,7 +1077,17 @@ const deleteFixture = async (id?: string) => {
       <div class="bg-[#141414] border border-[#C5A059]/40 w-full max-w-md rounded-2xl p-6 relative space-y-4">
         <button @click="selectedFixtureStats = null" class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
         <h3 class="text-lg font-black text-[#C5A059]">STATISTIK PERTANDINGAN</h3>
-        <p class="text-xs text-gray-300 font-bold">{{ selectedFixtureStats.home }} VS {{ selectedFixtureStats.away }}</p>
+        
+        <!-- ✅ NEW: Tampilkan skor jika match finished -->
+        <div class="flex items-center justify-between">
+          <p class="text-xs text-gray-300 font-bold">{{ selectedFixtureStats.home }} VS {{ selectedFixtureStats.away }}</p>
+          <span 
+            v-if="selectedFixtureStats.status === 'FINISHED' && selectedFixtureStats.homeScore !== null && selectedFixtureStats.homeScore !== undefined && selectedFixtureStats.awayScore !== null && selectedFixtureStats.awayScore !== undefined"
+            class="text-sm bg-gradient-to-r from-[#C5A059] to-[#9e7d3b] text-black px-3 py-1 rounded font-black"
+          >
+            {{ selectedFixtureStats.homeScore }} - {{ selectedFixtureStats.awayScore }}
+          </span>
+        </div>
 
         <div v-if="!selectedFixtureStats.matchStats || selectedFixtureStats.matchStats.length === 0" class="text-xs text-gray-500 py-4 text-center">
           Belum ada statistik tercatat untuk pertandingan ini.
@@ -890,23 +1111,72 @@ const deleteFixture = async (id?: string) => {
       </div>
     </div>
 
-    <!-- C. MODAL EDIT FIXTURE (ADMIN) -->
+    <!-- C. MODAL EDIT FIXTURE (ADMIN) - ✅ UPDATED DENGAN INPUT SKOR -->
     <div v-if="editingFixture" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div class="bg-[#141414] border border-[#C5A059]/40 w-full max-w-xl rounded-2xl p-6 relative space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="bg-[#141414] border border-[#C5A059]/40 w-full max-w-xl rounded-2xl p-6 relative space-y-4 max-h-[90vh] overflow-y-auto custom-scroll">
         <button @click="editingFixture = null" class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
         <h3 class="text-lg font-black text-[#C5A059]">EDIT STATISTIK PERTANDINGAN</h3>
 
+        <!-- ✅ NEW: FINAL SCORE SECTION -->
+        <div class="p-4 rounded-xl bg-black/50 border border-[#C5A059]/30 space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-black text-[#C5A059] uppercase tracking-wider">⚽ Skor Akhir (Final Score)</h4>
+            <span 
+              v-if="editingFixture.status === 'FINISHED'" 
+              class="text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-black"
+            >
+              MATCH FINISHED
+            </span>
+            <span 
+              v-else 
+              class="text-[9px] bg-white/10 text-gray-400 px-2 py-0.5 rounded font-bold"
+            >
+              OPTIONAL
+            </span>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] text-gray-400 font-bold block mb-1">{{ editingFixture.home }}</label>
+              <input 
+                v-model.number="editingFixture.homeScore" 
+                type="number" 
+                min="0" 
+                max="99"
+                placeholder="0" 
+                class="w-full bg-[#141414] border border-white/20 p-2.5 rounded text-sm text-white focus:border-[#C5A059] outline-none text-center font-black" 
+              />
+            </div>
+            <div>
+              <label class="text-[10px] text-gray-400 font-bold block mb-1">{{ editingFixture.away }}</label>
+              <input 
+                v-model.number="editingFixture.awayScore" 
+                type="number" 
+                min="0" 
+                max="99"
+                placeholder="0" 
+                class="w-full bg-[#141414] border border-white/20 p-2.5 rounded text-sm text-white focus:border-[#C5A059] outline-none text-center font-black" 
+              />
+            </div>
+          </div>
+          
+          <p class="text-[10px] text-gray-500">* Skor akan otomatis tampil di card fixture dan history pemain saat status = FINISHED</p>
+        </div>
+
         <div class="space-y-3">
-          <button @click="addPlayerStatToFixture" class="w-full py-2 bg-white/10 hover:bg-white/20 text-xs font-bold text-white rounded">
-            + Tambah Statistik Pemain
-          </button>
+          <div class="flex items-center justify-between border-b border-white/10 pb-2">
+            <h4 class="text-xs font-black text-white uppercase tracking-wider">Statistik Pemain</h4>
+            <button @click="addPlayerStatToFixture" class="px-3 py-1 bg-[#C5A059]/20 hover:bg-[#C5A059] text-[#C5A059] hover:text-black text-xs font-bold rounded transition">
+              + Tambah Pemain
+            </button>
+          </div>
 
           <div v-for="(stat, idx) in editingFixture.matchStats" :key="idx" class="p-3 bg-black rounded border border-white/10 space-y-2">
             <div class="flex justify-between items-center">
-              <select v-model="stat.playerId" @change="stat.playerName = players.find(p => p.id === stat.playerId)?.name || ''" class="bg-[#141414] text-xs text-white p-1 rounded border border-white/20">
+              <select v-model="stat.playerId" @change="stat.playerName = players.find(p => p.id === stat.playerId)?.name || ''" class="bg-[#141414] text-xs text-white p-1 rounded border border-white/20 flex-1 mr-2">
                 <option v-for="p in players" :key="p.id" :value="p.id">{{ p.name }}</option>
               </select>
-              <button @click="removePlayerStatFromFixture(idx)" class="text-red-400 text-xs">Hapus</button>
+              <button @click="removePlayerStatFromFixture(idx)" class="text-red-400 hover:text-red-300 text-xs font-bold px-2">HAPUS</button>
             </div>
 
             <div class="grid grid-cols-4 gap-2 text-center text-xs">
@@ -928,10 +1198,19 @@ const deleteFixture = async (id?: string) => {
               </div>
             </div>
           </div>
+          
+          <div v-if="!editingFixture.matchStats || editingFixture.matchStats.length === 0" class="py-6 text-center text-xs text-gray-500 bg-black/30 rounded border border-dashed border-white/10">
+            Belum ada statistik pemain. Klik "+ Tambah Pemain" untuk menambahkan.
+          </div>
         </div>
 
-        <button @click="saveEditedFixture" class="w-full bg-[#C5A059] text-black font-black py-2.5 rounded text-xs">
-          SIMPAN PERUBAHAN
+        <button 
+          @click="saveEditedFixture" 
+          :disabled="isLoading"
+          class="w-full bg-[#C5A059] hover:brightness-110 text-black font-black py-2.5 rounded text-xs uppercase tracking-wider transition flex items-center justify-center gap-2"
+        >
+          <span v-if="isLoading" class="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+          <span>{{ isLoading ? 'Menyimpan...' : 'SIMPAN PERUBAHAN' }}</span>
         </button>
       </div>
     </div>
@@ -953,7 +1232,6 @@ const deleteFixture = async (id?: string) => {
       </div>
     </div>
 
-    <!-- 8. FOOTER -->
     <footer class="border-t border-white/10 bg-black py-12 px-6">
       <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-gray-500">
         <div class="flex items-center gap-3">
@@ -962,7 +1240,6 @@ const deleteFixture = async (id?: string) => {
         </div>
         
         <div class="flex items-center gap-6">
-          <!-- Change #3: Link Instagram Footer -->
           <a href="https://www.instagram.com/netzach.fc?igsh=MWhyZWJmMTdnZnJyZg==" target="_blank" class="hover:text-[#C5A059] transition">Instagram</a>
           <a href="#squad" class="hover:text-white transition">Squad</a>
           <a href="#fixtures" class="hover:text-white transition">Fixtures</a>
@@ -973,3 +1250,20 @@ const deleteFixture = async (id?: string) => {
 
   </div>
 </template>
+
+<style scoped>
+.custom-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: rgba(197, 160, 89, 0.5);
+  border-radius: 3px;
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(197, 160, 89, 0.8);
+}
+</style>
