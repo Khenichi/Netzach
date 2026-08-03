@@ -89,7 +89,7 @@ interface Fixture {
 import imgImanuel from '/src/assets/Screenshot 2026-07-28 100646.png'
 import imgKhenichi from '/src/assets/Screenshot 2026-07-28 100359.png'
 import imgHansel from '/src/assets/Screenshot 2026-07-28 100633.png'
-import imgMarlon from '/src/assets/Screenshot 2026-07-28 100633.png'
+import imgMarlon from '/src/assets/Screenshot 2026-07-28 100636.png'
 import imgSony from '/src/assets/Screenshot 2026-07-28 100346.png'
 import imgKetan from '/src/assets/Screenshot 2026-07-28 100654.png'
 import imgValerio from '/src/assets/Screenshot 2026-07-28 100319.png'
