@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
-// Import Firebase (HANYA Firestore & Auth, TIDAK butuh Storage)
+// Import Firebase
 import { db, auth } from './firebase'
 import { 
   collection, 
@@ -19,9 +19,6 @@ import {
 } from 'firebase/auth'
 
 import bgMusicFile from '/src/assets/music.mp3'
-
-// ✅ IMGBB API KEY (GRATIS TANPA KARTU KREDIT)
-const IMGBB_API_KEY = '52880e1449c8a9508a80ff9b8ae475fc'
 
 // -------------------------------------------------------------
 // 1. AUDIO CONTROLLER
@@ -50,7 +47,7 @@ const playMusic = () => {
 }
 
 // -------------------------------------------------------------
-// 2. INTERFACES & TYPES
+// 2. INTERFACES & TYPES (POSISI GANDA / MULTI-ROLE)
 // -------------------------------------------------------------
 type GeneralPosition = 'Goal Keeper' | 'Defender' | 'Midfielder' | 'Forward'
 
@@ -73,6 +70,7 @@ interface Player {
   matchHistory?: MatchPlayerStat[]
 }
 
+// ✅ UPDATED: Tambah field homeScore & awayScore
 interface Fixture {
   id?: string
   home: string
@@ -83,15 +81,6 @@ interface Fixture {
   matchStats?: MatchPlayerStat[]
   homeScore?: number | null
   awayScore?: number | null
-}
-
-// ✅ Interface Gallery Photo
-interface GalleryPhoto {
-  id?: string
-  url: string
-  caption?: string
-  uploadedAt?: string
-  imgbbId?: string
 }
 
 // -------------------------------------------------------------
@@ -141,6 +130,7 @@ const isLoading = ref<boolean>(false)
 
 const isAdmin = ref<boolean>(false)
 const showLoginModal = ref<boolean>(false)
+const showAdminDashboard = ref<boolean>(false)
 const email = ref('')
 const password = ref('')
 const loginError = ref('')
@@ -148,14 +138,7 @@ const loginError = ref('')
 const players = ref<Player[]>([])
 const fixtures = ref<Fixture[]>([])
 
-// ✅ Gallery States
-const galleryPlayerId = ref<string>('')
-const galleryPhotos = ref<GalleryPhoto[]>([])
-const isUploading = ref<boolean>(false)
-const selectedPhoto = ref<GalleryPhoto | null>(null)
-const fileInputRef = ref<HTMLInputElement | null>(null)
-let unsubscribeGallery: (() => void) | null = null
-
+// ✅ UPDATED: newFixture include homeScore & awayScore
 const newFixture = ref<Fixture>({
   home: 'NetZach FC',
   away: '',
@@ -222,6 +205,7 @@ const getFixtureDateFromHistory = (fixtureId?: string): string => {
   return fixture?.date || '-'
 }
 
+// ✅ NEW HELPER: Ambil skor pertandingan dari history
 const getFixtureScoreFromHistory = (fixtureId?: string): string => {
   if (!fixtureId) return ''
   const fixture = fixtures.value.find(f => f.id === fixtureId)
@@ -231,10 +215,6 @@ const getFixtureScoreFromHistory = (fixtureId?: string): string => {
   }
   return `${fixture.homeScore} - ${fixture.awayScore}`
 }
-
-const galleryPlayer = computed(() => {
-  return players.value.find(p => p.id === galleryPlayerId.value) || null
-})
 
 // -------------------------------------------------------------
 // 6. LIFECYCLE & FIREBASE LISTENERS
@@ -272,30 +252,6 @@ onMounted(() => {
   })
 })
 
-onUnmounted(() => {
-  if (unsubscribeGallery) unsubscribeGallery()
-})
-
-// ✅ Realtime listener untuk gallery subcollection
-watch(galleryPlayerId, (newId) => {
-  if (unsubscribeGallery) {
-    unsubscribeGallery()
-    unsubscribeGallery = null
-  }
-  galleryPhotos.value = []
-  if (!newId) return
-
-  unsubscribeGallery = onSnapshot(
-    collection(db, 'players', newId, 'gallery'),
-    (snap) => {
-      const photos: GalleryPhoto[] = []
-      snap.forEach((d) => photos.push({ id: d.id, ...d.data() } as GalleryPhoto))
-      photos.sort((a, b) => (b.uploadedAt || '').localeCompare(a.uploadedAt || ''))
-      galleryPhotos.value = photos
-    }
-  )
-})
-
 const filteredPlayers = computed(() => {
   if (activeCategory.value === 'All') return players.value
 
@@ -327,6 +283,7 @@ const handleLogin = async () => {
 
 const handleLogout = async () => {
   await signOut(auth)
+  showAdminDashboard.value = false
 }
 
 const seedPlayersToFirebase = async () => {
@@ -365,6 +322,7 @@ const openPlayerFromFixture = (playerId: string) => {
   }
 }
 
+// ✅ UPDATED: addFixture include homeScore & awayScore
 const addFixture = async () => {
   if (!newFixture.value.away || !newFixture.value.date) {
     alert('Isi lawan dan tanggal pertandingan terlebih dahulu!')
@@ -374,8 +332,14 @@ const addFixture = async () => {
   try {
     await addDoc(collection(db, 'fixtures'), { ...newFixture.value, matchStats: [] })
     newFixture.value = { 
-      home: 'NetZach FC', away: '', date: '', time: '19:00 WIB', 
-      status: 'UPCOMING', matchStats: [], homeScore: null, awayScore: null 
+      home: 'NetZach FC', 
+      away: '', 
+      date: '', 
+      time: '19:00 WIB', 
+      status: 'UPCOMING', 
+      matchStats: [],
+      homeScore: null,
+      awayScore: null
     }
     alert('Jadwal pertandingan berhasil ditambahkan!')
   } catch (err) {
@@ -406,10 +370,12 @@ const editFixture = (fixture: Fixture) => {
   if (!editingFixture.value?.matchStats) {
     editingFixture.value!.matchStats = []
   }
+  // Default score ke null jika undefined
   if (editingFixture.value?.homeScore === undefined) editingFixture.value!.homeScore = null
   if (editingFixture.value?.awayScore === undefined) editingFixture.value!.awayScore = null
 }
 
+// ✅ FIXED: saveEditedFixture - sekarang menghapus stat yang dihapus dari matchHistory pemain
 const saveEditedFixture = async () => {
   if (!editingFixture.value || !editingFixture.value.id) return
   isLoading.value = true
@@ -426,9 +392,12 @@ const saveEditedFixture = async () => {
       awayScore: editingFixture.value.awayScore
     })
 
+    // ✅ LOGIKA BARU: Identifikasi semua pemain yang terpengaruh
     const currentStatPlayerIds = editingFixture.value.matchStats?.map(s => s.playerId) || []
     const affectedPlayerIds = new Set<string>()
     
+    // 1. Pemain yang pernah punya history di fixture ini (perlu dibersihkan)
+    // 2. Pemain yang ada di stat baru (perlu ditambahkan)
     for (const player of players.value) {
       if (!player.id) continue
       const hasHistoryHere = player.matchHistory?.some(h => h.playerId === editingFixture.value?.id)
@@ -439,13 +408,16 @@ const saveEditedFixture = async () => {
       }
     }
     
+    // Update setiap affected player
     for (const playerId of affectedPlayerIds) {
       const player = players.value.find(p => p.id === playerId)
       if (!player || !player.id) continue
       
       let history = player.matchHistory || []
+      // Filter out SEMUA entry untuk fixture ini (bersihkan yang lama, termasuk yang dihapus)
       history = history.filter(h => h.playerId !== editingFixture.value?.id)
       
+      // Jika pemain ini masih ada di matchStats baru, tambahkan yang baru
       const newStat = editingFixture.value.matchStats?.find(s => s.playerId === player.id)
       if (newStat) {
         history.push({ ...newStat, playerId: editingFixture.value.id! })
@@ -492,6 +464,9 @@ const deleteFixture = async (id?: string) => {
   if (confirm('Hapus jadwal ini?')) {
     isLoading.value = true
     try {
+      // ✅ NEW: Juga bersihkan history pemain terkait saat fixture dihapus total
+      const fixtureToDelete = fixtures.value.find(f => f.id === id)
+      
       for (const player of players.value) {
         if (!player.id || !player.matchHistory) continue
         const hasHistory = player.matchHistory.some(h => h.playerId === id)
@@ -505,128 +480,6 @@ const deleteFixture = async (id?: string) => {
     } finally {
       isLoading.value = false
     }
-  }
-}
-
-// -------------------------------------------------------------
-// 8. ✅ IMGBB UPLOAD METHODS
-// -------------------------------------------------------------
-
-// Kompres gambar sebelum upload biar cepat & hemat bandwidth
-const compressImage = (file: File, maxWidth = 1280, quality = 0.85): Promise<File> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const img = new Image()
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        const scale = Math.min(1, maxWidth / img.width)
-        canvas.width = Math.round(img.width * scale)
-        canvas.height = Math.round(img.height * scale)
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return reject(new Error('Canvas tidak didukung'))
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-        canvas.toBlob((blob) => {
-          if (!blob) return reject(new Error('Gagal kompres gambar'))
-          const newName = file.name.replace(/\.[^/.]+$/, '') + '.jpg'
-          resolve(new File([blob], newName, { type: 'image/jpeg' }))
-        }, 'image/jpeg', quality)
-      }
-      img.onerror = () => reject(new Error('Gagal membaca gambar'))
-      img.src = e.target?.result as string
-    }
-    reader.onerror = () => reject(new Error('Gagal membaca file'))
-    reader.readAsDataURL(file)
-  })
-}
-
-// ✅ Upload ke ImgBB API
-const uploadToImgBB = async (file: File): Promise<{ url: string; imgbbId: string }> => {
-  const formData = new FormData()
-  formData.append('image', file)
-
-  const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-    method: 'POST',
-    body: formData
-  })
-
-  const result = await response.json()
-
-  if (!result.success) {
-    throw new Error(result.error?.message || 'Upload gagal')
-  }
-
-  return {
-    url: result.data.display_url,
-    imgbbId: result.data.id
-  }
-}
-
-const triggerUpload = () => {
-  fileInputRef.value?.click()
-}
-
-const handleFileUpload = async (event: Event) => {
-  const input = event.target as HTMLInputElement
-  if (!input.files || input.files.length === 0 || !galleryPlayerId.value) return
-
-  const files = Array.from(input.files).filter(f => f.type.startsWith('image/'))
-  if (files.length === 0) return
-
-  isUploading.value = true
-  let successCount = 0
-  try {
-    for (const file of files) {
-      try {
-        // 1. Kompres dulu
-        const compressed = await compressImage(file)
-
-        // 2. Upload ke ImgBB
-        const { url, imgbbId } = await uploadToImgBB(compressed)
-
-        // 3. Simpan URL ke Firestore (subcollection gallery)
-        await addDoc(collection(db, 'players', galleryPlayerId.value, 'gallery'), {
-          url,
-          imgbbId,
-          caption: '',
-          uploadedAt: new Date().toISOString()
-        })
-        successCount++
-      } catch (err) {
-        console.error('Gagal upload file:', file.name, err)
-      }
-    }
-    alert(`✅ ${successCount} dari ${files.length} foto berhasil diunggah ke ImgBB!`)
-  } catch (err) {
-    console.error('Error upload:', err)
-    alert('Gagal mengunggah foto.')
-  } finally {
-    isUploading.value = false
-    input.value = ''
-  }
-}
-
-const editCaption = async (photo: GalleryPhoto) => {
-  if (!photo.id || !galleryPlayerId.value) return
-  const newCaption = prompt('Masukkan caption untuk foto ini:', photo.caption || '')
-  if (newCaption === null) return
-  try {
-    await updateDoc(doc(db, 'players', galleryPlayerId.value, 'gallery', photo.id), {
-      caption: newCaption
-    })
-  } catch (err) {
-    alert('Gagal menyimpan caption.')
-  }
-}
-
-const deletePhoto = async (photo: GalleryPhoto) => {
-  if (!photo.id || !galleryPlayerId.value) return
-  if (!confirm('Hapus foto ini dari gallery?\n\n⚠️ Catatan: URL ImgBB tetap aktif, hanya record di database yang dihapus.')) return
-  try {
-    await deleteDoc(doc(db, 'players', galleryPlayerId.value, 'gallery', photo.id))
-    if (selectedPhoto.value?.id === photo.id) selectedPhoto.value = null
-  } catch (err) {
-    alert('Gagal menghapus foto.')
   }
 }
 </script>
@@ -679,7 +532,6 @@ const deletePhoto = async (photo: GalleryPhoto) => {
           <a href="#" class="text-[#C5A059] border-b-2 border-[#C5A059] pb-1">HOME</a>
           <a href="#squad" class="text-gray-300 hover:text-[#C5A059] transition pb-1">SQUAD</a>
           <a href="#fixtures" class="text-gray-300 hover:text-[#C5A059] transition pb-1">FIXTURES</a>
-          <a href="#gallery" class="text-gray-300 hover:text-[#C5A059] transition pb-1">GALLERY</a>
           <a href="#about" class="text-gray-300 hover:text-[#C5A059] transition pb-1">ABOUT US</a>
           <a href="#news" class="text-gray-300 hover:text-[#C5A059] transition pb-1">NEWS</a>
         </nav>
@@ -836,7 +688,7 @@ const deletePhoto = async (photo: GalleryPhoto) => {
       </div>
     </section>
 
-    <!-- 4. FIXTURES SECTION -->
+    <!-- 4. FIXTURES & ABOUT US SECTION -->
     <section id="fixtures" class="py-24 px-6 bg-[#0d0d0d] border-t border-white/5">
       <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12">
         
@@ -848,6 +700,7 @@ const deletePhoto = async (photo: GalleryPhoto) => {
             </div>
           </div>
 
+          <!-- FORM TAMBAH JADWAL (ADMIN ONLY) - ✅ UPDATED DENGAN INPUT SKOR -->
           <div v-if="isAdmin" class="p-5 rounded-xl bg-[#141414] border border-[#C5A059]/40 space-y-4 shadow-lg relative overflow-hidden">
             <div class="absolute top-0 left-0 w-1 h-full bg-[#C5A059]"></div>
             
@@ -908,6 +761,7 @@ const deletePhoto = async (photo: GalleryPhoto) => {
                 </div>
               </div>
 
+              <!-- ✅ NEW: Input Skor (Opsional, muncul saat status = FINISHED) -->
               <div 
                 v-if="newFixture.status === 'FINISHED'" 
                 class="grid grid-cols-2 gap-3 p-3 rounded-lg bg-black/30 border border-dashed border-[#C5A059]/30"
@@ -952,11 +806,15 @@ const deletePhoto = async (photo: GalleryPhoto) => {
             <p class="text-xs text-gray-500">Belum ada jadwal pertandingan yang ditambahkan.</p>
           </div>
 
+          <!-- ✅ UPDATED: Fixture card dengan skor -->
           <div v-else class="space-y-4">
             <div 
               v-for="fixture in fixtures" 
               :key="fixture.id"
-              class="p-5 rounded-xl bg-[#141414] border border-white/5 hover:border-[#C5A059]/50 transition duration-300 flex flex-col sm:flex-row items-center justify-between gap-4 relative group"
+              :class="[
+                'p-5 rounded-xl bg-[#141414] border border-white/5 hover:border-[#C5A059]/50 transition duration-300 flex flex-col sm:flex-row items-center justify-between gap-4 relative group',
+                fixture.status === 'FINISHED' && fixture.homeScore !== null && fixture.homeScore !== undefined ? 'ring-1 ring-[#C5A059]/20' : ''
+              ]"
             >
               <div class="text-center sm:text-left flex flex-col items-center sm:items-start">
                 <template v-if="isAdmin">
@@ -983,9 +841,11 @@ const deletePhoto = async (photo: GalleryPhoto) => {
                 <div class="text-xs font-bold text-gray-400 mt-2">{{ fixture.date }} • {{ fixture.time }}</div>
               </div>
 
+              <!-- ✅ UPDATED: TEAM MATCH VS / Skor -->
               <div class="flex items-center gap-4 text-base font-black tracking-wider">
                 <span class="text-white text-right min-w-[100px]">{{ fixture.home }}</span>
                 
+                <!-- Tampilkan skor jika FINISHED dan skor sudah diisi -->
                 <template v-if="fixture.status === 'FINISHED' && fixture.homeScore !== null && fixture.homeScore !== undefined && fixture.awayScore !== null && fixture.awayScore !== undefined">
                   <div class="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-[#C5A059] to-[#9e7d3b] rounded-lg shadow-lg">
                     <span class="text-2xl font-black text-black leading-none">{{ fixture.homeScore }}</span>
@@ -995,6 +855,7 @@ const deletePhoto = async (photo: GalleryPhoto) => {
                   <span class="text-[9px] text-emerald-400 font-black uppercase tracking-widest">FT</span>
                 </template>
                 
+                <!-- Default VS badge -->
                 <span v-else class="px-3 py-1 bg-[#C5A059] text-black text-xs font-black rounded">VS</span>
                 
                 <span class="text-white text-left min-w-[100px]">{{ fixture.away }}</span>
@@ -1051,140 +912,8 @@ const deletePhoto = async (photo: GalleryPhoto) => {
       </div>
     </section>
 
-    <!-- 5. ✅ GALLERY SECTION (IMGBB) -->
-    <section id="gallery" class="py-24 px-6 bg-[#111111] border-t border-white/5">
-      <div class="max-w-7xl mx-auto space-y-10">
-        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/10 pb-6">
-          <div>
-            <div class="text-xs font-black tracking-[0.3em] text-[#C5A059] uppercase mb-2">MOMENTS & MEMORIES</div>
-            <h2 class="text-3xl sm:text-4xl font-black tracking-tight text-white uppercase">PLAYER GALLERY</h2>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="text-[9px] bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded border border-emerald-500/30 font-bold uppercase tracking-wider">
-              Powered by ImgBB
-            </span>
-            <p class="text-xs text-gray-400 max-w-xs hidden md:block">Pilih pemain untuk melihat koleksi momen terbaik mereka di lapangan.</p>
-          </div>
-        </div>
-
-        <!-- Pemilih Pemain (Horizontal Scroll) -->
-        <div class="flex gap-2 overflow-x-auto pb-2 custom-scroll">
-          <button
-            v-for="player in players"
-            :key="player.id"
-            @click="galleryPlayerId = player.id || ''"
-            :class="[
-              'flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-bold tracking-wider whitespace-nowrap transition duration-300',
-              galleryPlayerId === player.id
-                ? 'bg-[#C5A059] text-black border-[#C5A059] shadow-[0_0_15px_rgba(197,160,89,0.4)]'
-                : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10 hover:text-white'
-            ]"
-          >
-            <img 
-              v-if="getPlayerImage(player)" 
-              :src="getPlayerImage(player)" 
-              class="w-6 h-6 rounded-full object-cover border border-black/20" 
-            />
-            <span 
-              v-else 
-              class="w-6 h-6 rounded-full bg-black/20 flex items-center justify-center text-[10px] font-black"
-            >
-              {{ player.name.charAt(0) }}
-            </span>
-            <span class="uppercase">#{{ player.number }} {{ player.name }}</span>
-          </button>
-        </div>
-
-        <!-- Jika belum pilih pemain -->
-        <div v-if="!galleryPlayer" class="py-16 text-center bg-[#141414] rounded-2xl border border-white/5">
-          <div class="text-4xl mb-3">📸</div>
-          <p class="text-gray-400 text-sm">Pilih pemain di atas untuk melihat gallery fotonya.</p>
-        </div>
-
-        <!-- Gallery Content -->
-        <div v-else class="space-y-6">
-          <div class="flex items-center justify-between flex-wrap gap-4">
-            <div class="flex items-center gap-3">
-              <img 
-                :src="getPlayerImage(galleryPlayer)" 
-                class="w-12 h-12 rounded-full object-cover border-2 border-[#C5A059] shadow-[0_0_15px_rgba(197,160,89,0.3)]" 
-              />
-              <div>
-                <h3 class="text-lg font-black text-white uppercase tracking-wider">{{ galleryPlayer.name }}</h3>
-                <p class="text-[10px] text-gray-400 font-mono">{{ galleryPhotos.length }} FOTO TERSIMPAN</p>
-              </div>
-            </div>
-
-            <template v-if="isAdmin">
-              <input 
-                ref="fileInputRef" 
-                type="file" 
-                accept="image/*" 
-                multiple 
-                class="hidden" 
-                @change="handleFileUpload" 
-              />
-              <button 
-                @click="triggerUpload" 
-                :disabled="isUploading"
-                class="bg-[#C5A059] hover:brightness-110 text-black font-black px-5 py-2.5 rounded text-xs uppercase tracking-wider transition flex items-center gap-2 disabled:opacity-60"
-              >
-                <span v-if="isUploading" class="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
-                <span>{{ isUploading ? 'Mengunggah...' : '📤 Upload Foto' }}</span>
-              </button>
-            </template>
-          </div>
-
-          <div v-if="galleryPhotos.length === 0" class="py-16 text-center bg-[#141414] rounded-2xl border border-dashed border-white/10">
-            <div class="text-4xl mb-3">🖼️</div>
-            <p class="text-gray-400 text-sm">Belum ada foto untuk {{ galleryPlayer.name }}.</p>
-            <p v-if="isAdmin" class="text-[10px] text-gray-500 mt-1">Klik "Upload Foto" untuk menambahkan momen pertama (bisa pilih banyak foto sekaligus).</p>
-          </div>
-
-          <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            <div 
-              v-for="photo in galleryPhotos" 
-              :key="photo.id"
-              @click="selectedPhoto = photo"
-              class="group relative aspect-square rounded-xl overflow-hidden border border-white/10 hover:border-[#C5A059] transition duration-300 cursor-pointer bg-black/40"
-            >
-              <img 
-                :src="photo.url" 
-                :alt="photo.caption || galleryPlayer.name" 
-                loading="lazy"
-                class="w-full h-full object-cover group-hover:scale-105 transition duration-500" 
-              />
-              
-              <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/40 opacity-0 group-hover:opacity-100 transition duration-300">
-                <p class="absolute bottom-2 left-3 right-3 text-[10px] text-white font-bold truncate">
-                  {{ photo.caption || (photo.uploadedAt ? photo.uploadedAt.slice(0, 10) : '') }}
-                </p>
-
-                <div v-if="isAdmin" class="absolute top-2 right-2 flex gap-1.5">
-                  <button 
-                    @click.stop="editCaption(photo)" 
-                    title="Edit Caption"
-                    class="w-7 h-7 rounded bg-black/70 backdrop-blur text-[11px] hover:bg-[#C5A059] transition"
-                  >
-                    ✏️
-                  </button>
-                  <button 
-                    @click.stop="deletePhoto(photo)" 
-                    title="Hapus Foto"
-                    class="w-7 h-7 rounded bg-black/70 backdrop-blur text-[11px] hover:bg-red-600 transition"
-                  >
-                    🗑️
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 6. NEWS SECTION -->
-    <section id="news" class="py-24 px-6 bg-[#0d0d0d] border-t border-white/5">
+    <!-- 5. NEWS SECTION -->
+    <section id="news" class="py-24 px-6 bg-[#111111] border-t border-white/5">
       <div class="max-w-7xl mx-auto space-y-12">
         <div>
           <div class="text-xs font-black tracking-[0.3em] text-[#C5A059] uppercase mb-2">LATEST UPDATES</div>
@@ -1208,8 +937,8 @@ const deletePhoto = async (photo: GalleryPhoto) => {
       </div>
     </section>
 
-    <!-- 7. MODALS -->
-    <!-- A. MODAL PLAYER DETAILS -->
+    <!-- 6. MODALS -->
+    <!-- A. MODAL PLAYER DETAILS - ✅ UPDATED: Tampilkan skor saat match history -->
     <div v-if="selectedPlayer" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
       <div class="bg-[#141414] border border-[#C5A059]/40 w-full max-w-2xl rounded-2xl p-6 relative space-y-6 max-h-[90vh] overflow-y-auto custom-scroll">
         <button @click="selectedPlayer = null" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl z-10">✕</button>
@@ -1293,6 +1022,7 @@ const deletePhoto = async (photo: GalleryPhoto) => {
                   <span class="text-white text-sm font-black">
                     {{ getOpponentFromHistory(match.playerId) }}
                   </span>
+                  <!-- ✅ NEW: Tampilkan skor di history -->
                   <span 
                     v-if="getFixtureScoreFromHistory(match.playerId)" 
                     class="ml-2 text-[10px] bg-gradient-to-r from-[#C5A059] to-[#9e7d3b] text-black px-2 py-0.5 rounded font-black"
@@ -1348,6 +1078,7 @@ const deletePhoto = async (photo: GalleryPhoto) => {
         <button @click="selectedFixtureStats = null" class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
         <h3 class="text-lg font-black text-[#C5A059]">STATISTIK PERTANDINGAN</h3>
         
+        <!-- ✅ NEW: Tampilkan skor jika match finished -->
         <div class="flex items-center justify-between">
           <p class="text-xs text-gray-300 font-bold">{{ selectedFixtureStats.home }} VS {{ selectedFixtureStats.away }}</p>
           <span 
@@ -1380,12 +1111,13 @@ const deletePhoto = async (photo: GalleryPhoto) => {
       </div>
     </div>
 
-    <!-- C. MODAL EDIT FIXTURE -->
+    <!-- C. MODAL EDIT FIXTURE (ADMIN) - ✅ UPDATED DENGAN INPUT SKOR -->
     <div v-if="editingFixture" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
       <div class="bg-[#141414] border border-[#C5A059]/40 w-full max-w-xl rounded-2xl p-6 relative space-y-4 max-h-[90vh] overflow-y-auto custom-scroll">
         <button @click="editingFixture = null" class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
         <h3 class="text-lg font-black text-[#C5A059]">EDIT STATISTIK PERTANDINGAN</h3>
 
+        <!-- ✅ NEW: FINAL SCORE SECTION -->
         <div class="p-4 rounded-xl bg-black/50 border border-[#C5A059]/30 space-y-3">
           <div class="flex items-center justify-between">
             <h4 class="text-xs font-black text-[#C5A059] uppercase tracking-wider">⚽ Skor Akhir (Final Score)</h4>
@@ -1395,7 +1127,10 @@ const deletePhoto = async (photo: GalleryPhoto) => {
             >
               MATCH FINISHED
             </span>
-            <span v-else class="text-[9px] bg-white/10 text-gray-400 px-2 py-0.5 rounded font-bold">
+            <span 
+              v-else 
+              class="text-[9px] bg-white/10 text-gray-400 px-2 py-0.5 rounded font-bold"
+            >
               OPTIONAL
             </span>
           </div>
@@ -1424,6 +1159,8 @@ const deletePhoto = async (photo: GalleryPhoto) => {
               />
             </div>
           </div>
+          
+          <p class="text-[10px] text-gray-500">* Skor akan otomatis tampil di card fixture dan history pemain saat status = FINISHED</p>
         </div>
 
         <div class="space-y-3">
@@ -1495,28 +1232,6 @@ const deletePhoto = async (photo: GalleryPhoto) => {
       </div>
     </div>
 
-    <!-- E. ✅ LIGHTBOX GALLERY -->
-    <div 
-      v-if="selectedPhoto" 
-      class="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4" 
-      @click.self="selectedPhoto = null"
-    >
-      <button @click="selectedPhoto = null" class="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl z-10">✕</button>
-      
-      <div class="max-w-4xl w-full space-y-3">
-        <img 
-          :src="selectedPhoto.url" 
-          :alt="selectedPhoto.caption || 'Foto gallery'" 
-          class="w-full max-h-[80vh] object-contain rounded-xl border border-[#C5A059]/30" 
-        />
-        <div class="flex items-center justify-between text-xs">
-          <p class="text-gray-300 font-bold">{{ selectedPhoto.caption || 'NetZach FC Gallery' }}</p>
-          <span class="text-gray-500 font-mono">{{ selectedPhoto.uploadedAt ? selectedPhoto.uploadedAt.slice(0, 10) : '' }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 8. FOOTER -->
     <footer class="border-t border-white/10 bg-black py-12 px-6">
       <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-gray-500">
         <div class="flex items-center gap-3">
@@ -1528,7 +1243,6 @@ const deletePhoto = async (photo: GalleryPhoto) => {
           <a href="https://www.instagram.com/netzach.fc?igsh=MWhyZWJmMTdnZnJyZg==" target="_blank" class="hover:text-[#C5A059] transition">Instagram</a>
           <a href="#squad" class="hover:text-white transition">Squad</a>
           <a href="#fixtures" class="hover:text-white transition">Fixtures</a>
-          <a href="#gallery" class="hover:text-white transition">Gallery</a>
           <a href="#about" class="hover:text-white transition">About Us</a>
         </div>
       </div>
@@ -1540,7 +1254,6 @@ const deletePhoto = async (photo: GalleryPhoto) => {
 <style scoped>
 .custom-scroll::-webkit-scrollbar {
   width: 6px;
-  height: 6px;
 }
 .custom-scroll::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.05);
