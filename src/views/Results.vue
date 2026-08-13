@@ -38,11 +38,16 @@ const getResultIndicatorColor = (fixture: Fixture): string => {
 
 // ✅ Edit fixture di halaman Results
 const editFixture = (fixture: Fixture): void => {
-  editingFixture.value = JSON.parse(JSON.stringify(fixture))
-  if (!editingFixture.value?.matchStats) editingFixture.value.matchStats = []
-  if (editingFixture.value?.homeScore === undefined) editingFixture.value.homeScore = null
-  if (editingFixture.value?.awayScore === undefined) editingFixture.value.awayScore = null
-  if (!editingFixture.value?.matchType) editingFixture.value.matchType = 'Futsal'
+  const clone = JSON.parse(JSON.stringify(fixture)) as Fixture
+  
+  // Set default values di local variable (bukan di .value)
+  if (!clone.matchStats) clone.matchStats = []
+  if (clone.homeScore === undefined) clone.homeScore = null
+  if (clone.awayScore === undefined) clone.awayScore = null
+  if (!clone.matchType) clone.matchType = 'Futsal'
+  
+  // Baru assign ke ref
+  editingFixture.value = clone
 }
 
 const addPlayerStat = (): void => {

@@ -52,8 +52,13 @@ const handleAddFixture = async (): Promise<void> => {
 }
 
 const editFixture = (fixture: Fixture): void => {
-  editingFixture.value = JSON.parse(JSON.stringify(fixture))
-  if (!editingFixture.value?.matchType) editingFixture.value.matchType = 'Futsal'
+  const clone = JSON.parse(JSON.stringify(fixture)) as Fixture
+  
+  // Set default di local variable
+  if (!clone.matchType) clone.matchType = 'Futsal'
+  
+  // Baru assign ke ref
+  editingFixture.value = clone
 }
 
 const handleSave = async (): Promise<void> => {
