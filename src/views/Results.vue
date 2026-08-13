@@ -119,9 +119,6 @@ const handleSave = async (): Promise<void> => {
       <div v-else class="space-y-10">
         <div v-for="(matches, month) in groupedByMonth" :key="month" class="space-y-4">
           <div class="flex items-center gap-4 pb-2 border-b border-white/10">
-            <div class="w-12 h-12 rounded-lg bg-[#C5A059]/10 border border-[#C5A059]/40 flex items-center justify-center">
-              <span class="text-[#C5A059] text-xl">🏁</span>
-            </div>
             <div>
               <div class="text-2xl font-black tracking-tight">{{ month }}</div>
               <div class="text-[10px] text-gray-400 uppercase tracking-widest">{{ matches.length }} RESULT{{ matches.length > 1 ? 'S' : '' }}</div>

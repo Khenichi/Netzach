@@ -1,28 +1,44 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import imgNetzachCrow from '/src/assets/WhatsApp Image 2026-07-28 at 10.50.06 AM (1).jpeg'
+import { useData } from '../composables/useData'
 import type { NewsItem } from '../types'
+import { computed } from 'vue'
+
+const { fixtures } = useData()
+
+const totalMatchesPlayed = computed<number>(() => 
+  fixtures.value.filter(f => f.status === 'FINISHED').length
+)
+
+const totalWins = computed<number>(() =>
+  fixtures.value.filter(f => 
+    f.status === 'FINISHED' && 
+    (f.homeScore || 0) > (f.awayScore || 0)
+  ).length
+)
 
 const news: NewsItem[] = [
   { id: 1, category: 'MATCH PREVIEW', title: 'NetZach FC Siap Menghadapi Laga Krusial Minggu Ini', date: 'JUL 28, 2026', image: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=600' },
   { id: 2, category: 'SQUAD UPDATE', title: 'Latihan Intensif Skuad Utama Jelang Pembukaan Musim Baru', date: 'JUL 26, 2026', image: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?q=80&w=600' }
 ]
 
-interface Stat { label: string; value: string; icon: string }
-interface Value { icon: string; title: string; desc: string }
+interface Stat { label: string; value: string; }
+interface Value {  title: string; desc: string }
 
 const stats: Stat[] = [
-  { label: 'Founded', value: '2026', icon: '⚽' },
-  { label: 'Active Players', value: '9+', icon: '👥' },
-  { label: 'Matches Played', value: '∞', icon: '🏟️' },
-  { label: 'Trophies Target', value: '1', icon: '🏆' }
+  { label: 'Founded', value: '2026' },
+  { label: 'Active Players', value: '9+' },
+  { label: 'Matches Played', value: totalMatchesPlayed.value > 0 ? `${totalMatchesPlayed.value}` : '0' },
+  { label: 'Victories', value: totalWins.value > 0 ? `${totalWins.value}` : '0' }
+
 ]
 
 const values: Value[] = [
-  { icon: '⚔️', title: 'HONOR', desc: 'Menjunjung tinggi sportivitas dan kehormatan dalam setiap pertandingan.' },
-  { icon: '🔥', title: 'COURAGE', desc: 'Keberanian untuk bertarung sampai peluit akhir, apapun situasinya.' },
-  { icon: '🤝', title: 'FAMILY', desc: 'Ikatan kekeluargaan yang kuat menjadi fondasi utama klub ini.' },
-  { icon: '💎', title: 'EXCELLENCE', desc: 'Komitmen untuk selalu memberikan yang terbaik di setiap laga.' }
+  { title: 'HONOR', desc: 'Menjunjung tinggi sportivitas dan kehormatan dalam setiap pertandingan.' },
+  { title: 'COURAGE', desc: 'Keberanian untuk bertarung sampai peluit akhir, apapun situasinya.' },
+  { title: 'FAMILY', desc: 'Ikatan kekeluargaan yang kuat menjadi fondasi utama klub ini.' },
+  { title: 'EXCELLENCE', desc: 'Komitmen untuk selalu memberikan yang terbaik di setiap laga.' }
 ]
 </script>
 
