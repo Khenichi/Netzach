@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import imgNetzachCrow from '/src/assets/WhatsApp Image 2026-07-28 at 10.50.06 AM (1).jpeg'
+import imgTeamPhoto from '/src/assets/WhatsApp Image 2026-08-13 at 2.55.33 PM.jpeg'  // ✅ Foto baru
 import { useData } from '../composables/useData'
 import type { NewsItem } from '../types'
-import { computed } from 'vue'
 
 const { fixtures } = useData()
 
@@ -23,16 +24,15 @@ const news: NewsItem[] = [
   { id: 2, category: 'SQUAD UPDATE', title: 'Latihan Intensif Skuad Utama Jelang Pembukaan Musim Baru', date: 'JUL 26, 2026', image: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?q=80&w=600' }
 ]
 
-interface Stat { label: string; value: string; }
-interface Value {  title: string; desc: string }
+interface Stat { label: string; value: string | number; }
+interface Value { title: string; desc: string }
 
-const stats: Stat[] = [
+const stats = computed<Stat[]>(() => [
   { label: 'Founded', value: '2026' },
   { label: 'Active Players', value: '9+' },
-  { label: 'Matches Played', value: totalMatchesPlayed.value > 0 ? `${totalMatchesPlayed.value}` : '0' },
-  { label: 'Victories', value: totalWins.value > 0 ? `${totalWins.value}` : '0' }
-
-]
+  { label: 'Matches Played', value: totalMatchesPlayed.value > 0 ? `${totalMatchesPlayed.value}+` : '0' },
+  { label: 'Victories', value: totalWins.value > 0 ? `${totalWins.value}+` : '0' }
+])
 
 const values: Value[] = [
   { title: 'HONOR', desc: 'Menjunjung tinggi sportivitas dan kehormatan dalam setiap pertandingan.' },
@@ -79,6 +79,42 @@ const values: Value[] = [
       </div>
     </section>
 
+    <!-- ============================================ -->
+    <!-- 🆕 TEAM PHOTO + QUOTE (DITIMPA) -->
+    <!-- ============================================ -->
+    <section class="relative overflow-hidden bg-[#0d0d0d]">
+      <!-- Container untuk foto dengan aspect ratio natural -->
+      <div class="relative w-full">
+        <!-- Foto dengan ukuran asli (tidak di-crop) -->
+        <img 
+          :src="imgTeamPhoto" 
+          alt="NetZach FC Team" 
+          class="w-full h-auto block filter brightness-[0.75] saturate-[0.8] sepia-[0.2]"
+        />
+        
+        <!-- Overlay gradient golden-dark -->
+        <div class="absolute inset-0 bg-gradient-to-b from-[#0d0d0d] via-[#C5A059]/15 to-[#0d0d0d]"></div>
+        <div class="absolute inset-0 bg-[#C5A059]/10 mix-blend-multiply"></div>
+
+        <!-- Quote ditimpa di tengah foto -->
+        <div class="absolute inset-0 flex items-center justify-center">
+          <div class="max-w-4xl mx-auto px-6 text-center">
+            <p class="text-2xl sm:text-3xl md:text-4xl font-light italic text-white leading-relaxed mb-8 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
+              NetZach FC didirikan atas dasar 
+              <span class="text-[#C5A059] font-bold not-italic">passion</span>, 
+              <span class="text-[#C5A059] font-bold not-italic">kedisiplinan</span>, dan 
+              <span class="text-[#C5A059] font-bold not-italic">ikatan kekeluargaan</span> 
+              yang kuat.
+            </p>
+            <div class="w-24 h-0.5 bg-gradient-to-r from-transparent via-[#C5A059] to-transparent mx-auto mb-6"></div>
+            <p class="text-xs font-black tracking-[0.3em] text-[#C5A059] uppercase drop-shadow-lg">
+              — THE NETZACH PHILOSOPHY —
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ABOUT US -->
     <section class="py-24 px-6 bg-gradient-to-b from-[#111111] to-[#0d0d0d] relative overflow-hidden">
       <div class="absolute top-20 right-0 w-[400px] h-[400px] bg-[#C5A059]/5 rounded-full blur-[120px]"></div>
@@ -91,26 +127,19 @@ const values: Value[] = [
           <div class="w-24 h-1 bg-gradient-to-r from-[#C5A059] to-transparent mx-auto"></div>
         </div>
 
-        <div class="max-w-3xl mx-auto text-center p-10 rounded-2xl bg-gradient-to-br from-[#141414] to-[#0d0d0d] border border-[#C5A059]/30 shadow-[0_0_60px_rgba(197,160,89,0.1)] relative">
-          <div class="absolute -top-5 left-1/2 -translate-x-1/2 text-6xl text-[#C5A059]/30">"</div>
-          <p class="text-xl sm:text-2xl font-light italic text-gray-200 leading-relaxed">
-            NetZach FC didirikan atas dasar <span class="text-[#C5A059] font-bold">passion</span>, <span class="text-[#C5A059] font-bold">kedisiplinan</span>, dan <span class="text-[#C5A059] font-bold">ikatan kekeluargaan</span> yang kuat.
-          </p>
-        </div>
-
+        <!-- Stats Grid -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div v-for="stat in stats" :key="stat.label" class="p-6 rounded-xl bg-[#141414] border border-white/5 hover:border-[#C5A059]/50 transition group text-center">
-            <div class="text-3xl mb-2 group-hover:scale-110 transition">{{ stat.icon }}</div>
             <div class="text-3xl font-black text-[#C5A059] mb-1">{{ stat.value }}</div>
             <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{{ stat.label }}</div>
           </div>
         </div>
 
+        <!-- Club Values -->
         <div>
           <h3 class="text-2xl font-black text-center mb-10 uppercase tracking-wider">OUR VALUES</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div v-for="v in values" :key="v.title" class="p-6 rounded-xl bg-[#141414] border border-white/5 hover:border-[#C5A059]/50 hover:-translate-y-1 transition-all duration-300 group">
-              <div class="text-4xl mb-4 group-hover:scale-110 transition">{{ v.icon }}</div>
               <h4 class="text-lg font-black text-[#C5A059] mb-2">{{ v.title }}</h4>
               <p class="text-xs text-gray-400 leading-relaxed">{{ v.desc }}</p>
             </div>

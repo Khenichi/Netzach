@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useData } from '../composables/useData'
 import { useAuth } from '../composables/useAuth'
 import type { Player, GeneralPosition } from '../types'
+import imgSquadBg from '/src/assets/WhatsApp Image 2026-08-13 at 2.50.53 PM.jpeg'  // ✅ Foto baru
 
 import imgImanuel from '/src/assets/Screenshot 2026-07-28 100646.png'
 import imgKhenichi from '/src/assets/Screenshot 2026-07-28 100359.png'
@@ -47,30 +48,52 @@ const openPlayer = (player: Player): void => {
 
 <template>
   <div>
-    <section class="relative h-[300px] overflow-hidden bg-gradient-to-br from-[#0d0d0d] via-[#1a1a1a] to-[#0d0d0d] border-b border-[#C5A059]/20">
-      <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1459865409283-045e9ed37b34?q=80&w=2000')] bg-cover bg-center opacity-15"></div>
-      <div class="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] to-transparent"></div>
+    <!-- ============================================ -->
+    <!-- 🆕 HERO dengan FOTO LOKAL + GOLDEN DARK TONE -->
+    <!-- ============================================ -->
+    <section class="relative h-[400px] overflow-hidden border-b border-[#C5A059]/20">
+      <!-- Background Image -->
+      <img 
+        :src="imgSquadBg" 
+        alt="NetZach FC First Team" 
+        class="absolute inset-0 w-full h-full object-cover filter brightness-[0.65] saturate-[0.85] sepia-[0.15]"
+      />
+      
+      <!-- Overlay gradient golden-dark -->
+      <div class="absolute inset-0 bg-gradient-to-b from-[#0d0d0d]/80 via-[#C5A059]/10 to-[#0d0d0d]"></div>
+      <div class="absolute inset-0 bg-[#C5A059]/5 mix-blend-overlay"></div>
+      
+      <!-- Decorative glow -->
+      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] bg-[#C5A059]/10 rounded-full blur-[100px]"></div>
+
+      <!-- Content -->
       <div class="absolute inset-0 flex items-center justify-center">
-        <div class="text-center space-y-3">
-          <div class="text-xs font-black tracking-[0.3em] text-[#C5A059] uppercase">SEASON 2026/2027</div>
-          <h1 class="text-5xl sm:text-7xl font-black tracking-tight uppercase">
+        <div class="text-center space-y-3 relative z-10 px-6">
+          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#C5A059]/40 bg-black/40 backdrop-blur-md text-[#C5A059] text-xs font-bold tracking-widest uppercase">
+            SEASON 2026/2027
+          </div>
+          <h1 class="text-5xl sm:text-7xl font-black tracking-tight uppercase drop-shadow-[0_4px_20px_rgba(0,0,0,0.9)]">
             FIRST <span class="text-transparent bg-clip-text bg-gradient-to-r from-[#C5A059] to-[#f3e0aa]">TEAM</span>
           </h1>
-          <p class="text-gray-400 max-w-md mx-auto text-sm">The warriors who wear the gold and black.</p>
+          <p class="text-gray-300 max-w-md mx-auto text-sm drop-shadow-lg">
+            The warriors who wear the gold and black.
+          </p>
         </div>
       </div>
     </section>
 
+    <!-- SQUAD CONTENT -->
     <section class="py-16 px-6 max-w-7xl mx-auto space-y-10">
+      <!-- FILTER TABS -->
       <div class="flex flex-wrap items-center justify-center gap-2 border-b border-white/10 pb-6">
-        <button
-          v-for="cat in categories"
+        <button 
+          v-for="cat in categories" 
           :key="cat"
           @click="activeCategory = cat"
           :class="[
             'px-5 py-2.5 text-xs font-bold tracking-wider rounded-full transition duration-300 uppercase border',
-            activeCategory === cat
-              ? 'bg-[#C5A059] text-black border-[#C5A059] shadow-[0_0_20px_rgba(197,160,89,0.4)]'
+            activeCategory === cat 
+              ? 'bg-[#C5A059] text-black border-[#C5A059] shadow-[0_0_20px_rgba(197,160,89,0.4)]' 
               : 'bg-transparent text-gray-400 border-white/10 hover:border-[#C5A059]/50 hover:text-white'
           ]"
         >
@@ -80,17 +103,13 @@ const openPlayer = (player: Player): void => {
 
       <div v-if="players.length === 0" class="text-center py-12">
         <p class="text-gray-400 text-sm">Database pemain kosong.</p>
-        <button
-          v-if="isAdmin"
-          @click="seedPlayersToFirebase"
-          :disabled="isLoading"
-          class="mt-4 bg-[#C5A059] text-black font-bold px-4 py-2 rounded text-xs hover:brightness-110"
-        >🚀 Seed Pemain Sekarang</button>
+        <button v-if="isAdmin" @click="seedPlayersToFirebase" :disabled="isLoading" class="mt-4 bg-[#C5A059] text-black font-bold px-4 py-2 rounded text-xs hover:brightness-110">🚀 Seed Pemain Sekarang</button>
       </div>
 
+      <!-- GRID PEMAIN -->
       <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        <div
-          v-for="player in filteredPlayers"
+        <div 
+          v-for="player in filteredPlayers" 
           :key="player.id || player.name"
           @click="openPlayer(player)"
           class="group relative aspect-[3/4] rounded-xl overflow-hidden bg-[#141414] cursor-pointer border border-white/5 hover:border-[#C5A059] transition-all duration-500 hover:shadow-[0_0_40px_rgba(197,160,89,0.3)]"
@@ -99,10 +118,10 @@ const openPlayer = (player: Player): void => {
             {{ player.number }}
           </span>
 
-          <img
-            :src="getPlayerImage(player)"
-            :alt="player.name"
-            class="w-full h-full object-cover object-top filter grayscale contrast-110 group-hover:grayscale-0 group-hover:scale-110 transition duration-700 ease-out"
+          <img 
+            :src="getPlayerImage(player)" 
+            :alt="player.name" 
+            class="w-full h-full object-cover object-top filter grayscale contrast-110 group-hover:grayscale-0 group-hover:scale-110 transition duration-700 ease-out" 
           />
 
           <div class="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-[#0d0d0d]/60 to-transparent"></div>
