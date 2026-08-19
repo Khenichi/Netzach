@@ -29,9 +29,9 @@ interface Value { title: string; desc: string }
 
 const stats = computed<Stat[]>(() => [
   { label: 'Founded', value: '2026' },
-  { label: 'Active Players', value: '9+' },
-  { label: 'Matches Played', value: totalMatchesPlayed.value > 0 ? `${totalMatchesPlayed.value}+` : '0' },
-  { label: 'Victories', value: totalWins.value > 0 ? `${totalWins.value}+` : '0' }
+  { label: 'Active Players', value: '9' },
+  { label: 'Matches Played', value: totalMatchesPlayed.value > 0 ? `${totalMatchesPlayed.value}` : '0' },
+  { label: 'Victories', value: totalWins.value > 0 ? `${totalWins.value}` : '0' }
 ])
 
 const values: Value[] = [
