@@ -51,7 +51,7 @@ const openPlayer = (player: Player): void => {
     <!-- ============================================ -->
     <!-- 🆕 HERO dengan FOTO LOKAL + GOLDEN DARK TONE -->
     <!-- ============================================ -->
-    <section class="relative h-[400px] overflow-hidden border-b border-[#C5A059]/20">
+    <section class="relative h-[380px] overflow-hidden border-b border-[#C5A059]/20">
       <!-- Background Image -->
       <img 
         :src="imgSquadBg" 

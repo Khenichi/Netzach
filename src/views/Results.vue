@@ -4,6 +4,9 @@ import { useData } from '../composables/useData'
 import { useAuth } from '../composables/useAuth'
 import type { Fixture } from '../types'
 
+// ✅ Import foto lokal background kamu di sini
+import imgResultsBg from '/src/assets/BBGSPORT@ARYOOO (640 of 1006).jpg'
+
 const { fixtures, selectedFixtureStats, parseFixtureDate, groupFixturesByMonth, saveEditedFixture, isLoading, players } = useData()
 const { isAdmin } = useAuth()
 
@@ -40,13 +43,11 @@ const getResultIndicatorColor = (fixture: Fixture): string => {
 const editFixture = (fixture: Fixture): void => {
   const clone = JSON.parse(JSON.stringify(fixture)) as Fixture
   
-  // Set default values di local variable (bukan di .value)
   if (!clone.matchStats) clone.matchStats = []
   if (clone.homeScore === undefined) clone.homeScore = null
   if (clone.awayScore === undefined) clone.awayScore = null
   if (!clone.matchType) clone.matchType = 'Futsal'
   
-  // Baru assign ke ref
   editingFixture.value = clone
 }
 
@@ -79,8 +80,25 @@ const handleSave = async (): Promise<void> => {
 
 <template>
   <div>
-    <section class="relative h-[250px] bg-gradient-to-br from-[#0d0d0d] via-[#1a1a1a] to-[#0d0d0d] border-b border-[#C5A059]/20 overflow-hidden">
-      <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1522778119026-d647f0596401?q=80&w=2000')] bg-cover bg-center opacity-10"></div>
+    <!-- ============================================ -->
+    <!-- 🆕 HERO RESULTS DENGAN FOTO LOKAL & FADE TONE -->
+    <!-- ============================================ -->
+    <section class="relative h-[380px] overflow-hidden border-b border-[#C5A059]/20">
+      <!-- Background Image Local -->
+      <img 
+        :src="imgResultsBg" 
+        alt="Results Background" 
+        class="absolute inset-0 w-full h-full object-cover filter brightness-[0.75] saturate-[0.8] sepia-[0.1]"
+      />
+      
+      <!-- Overlay gradient golden-dark agar menyatu sempurna dengan base color -->
+      <div class="absolute inset-0 bg-gradient-to-b from-[#0d0d0d]/80 via-[#C5A059]/10 to-[#0d0d0d]"></div>
+      <div class="absolute inset-0 bg-[#0d0d0d]/40 mix-blend-multiply"></div>
+      
+      <!-- Decorative glow -->
+      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[200px] bg-[#C5A059]/10 rounded-full blur-[90px]"></div>
+
+      <!-- Content Title -->
       <div class="absolute inset-0 flex items-center justify-center">
         <div class="text-center">
           <div class="text-xs font-black tracking-[0.3em] text-[#C5A059] uppercase mb-2">FULL TIME</div>
@@ -174,7 +192,7 @@ const handleSave = async (): Promise<void> => {
       </div>
     </section>
 
-    <!-- ✅ EDIT MODAL (LENGKAP dengan matchStats + Skor) -->
+    <!-- ✅ EDIT MODAL -->
     <div
       v-if="editingFixture"
       class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
